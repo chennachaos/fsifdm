@@ -116,17 +116,14 @@ int SolverPardisoEigen::initialise(int numProc, int matrixType, int nr)
   //IPARM[0] = 1;     // user input values to IPARM
   //IPARM[1] = 2;
 
-  IPARM[2] = max(1,numProc);  // number of processors (no default value available)
-/*
   tmp = getenv("OMP_NUM_THREADS");
 
   if (tmp != NULL) 
-  {
     sscanf(tmp,"%d", &idum);
-    if (idum != IPARM[2]) prgError(1,fct,"set environment variable OMP_NUM_THREADS to numProc!");
-  }
-  else prgError(2,fct,"set environment variable OMP_NUM_THREADS!");
-*/
+  else
+    prgError(2,fct,"set environment variable OMP_NUM_THREADS!");
+
+  IPARM[2] = max(1,idum);  // number of processors (no default value available)
 
 #ifdef PARDISO_SOLVER
   pardisoinit(PT, &MTYPE, &SOLVER, IPARM, DPARM, &error);
