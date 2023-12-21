@@ -189,7 +189,7 @@ void ImmersedIntegrationElement::computeAccelerationCur(const VectorXd& NN, myPo
 void ImmersedIntegrationElement::integrateForceAndMoment(VectorXd& vectemp, myPoint& centLoc)
 {
   // to compute total force on the immersed rigid solid
-  
+
   int  gp, ii, jj, kk, nlb = pointNums.size();
   double  dvol, detJ;
   vector<double>  N(nlb), dN(nlb), dN_dx(nlb), xx(nlb), yy(nlb), zz(nlb);
@@ -385,8 +385,8 @@ void ImmersedIntegrationElement::integrateForceFlexible(int ind1, int ind2, Vect
       //cout << ii << '\t' << N[ii] << endl;
       kk = pointNums[ii]*DIM;
 
-      lamX  += SolnData->var3(kk)   * N[ii] ;
-      lamY  += SolnData->var3(kk+1) * N[ii] ;
+      lamX  += SolnData->var3Cur(kk)   * N[ii] ;
+      lamY  += SolnData->var3Cur(kk+1) * N[ii] ;
     }
 
     for(ii=0; ii<nlbS; ii++)
@@ -416,7 +416,7 @@ void ImmersedIntegrationElement::computeKhorzKvertFlexible(int ind1, int ind2, M
   int  nlbS = nlbL;
 
   vector<double>  NL(nlbL), dN(nlbL), dN_dx(nlbL), xNode(nlbL), yNode(nlbL), NS(nlbS);
-  double  dvol, detJ, dvol1, dvol2, fact1, fact2, xc;
+  double  dvol, detJ, dvol1, dvol2, fact1, fact2, fact3, fact4, xc;
 
   for(ii=0;ii<nlbL;ii++)
   {
@@ -485,20 +485,26 @@ void ImmersedIntegrationElement::computeKhorzKvertFlexible(int ind1, int ind2, M
       {
         TJ   = jj*DIM;
         TJp1 = TJ+1;
-        
-        fact1 *= NL[jj];
 
-        Kh(TI,   TJ)   += fact1;
-        Kh(TIp1, TJp1) += fact1;
-        //Kh(TIp2, TJ)   += ( -yc*fact1);
-        //Kh(TIp2, TJp1) += (  xc*fact1);
+        fact3 = fact1 * NL[jj];
 
-        fact2 *= NL[jj];
+        Kh(TI,   TJ)     += fact3;
+        //Kh(TIp1, TJ)     += fact3;
+        //Kh(TIp2, TJ)     += fact3;
 
-        Kv(TJ,   TI)   += fact2;
-        Kv(TJp1, TIp1) += fact2;
-        //Kv(TJ,   TIp2) += ( -yc*fact2);
-        //Kv(TJp1, TIp2) += (  xc*fact2);
+        //Kh(TI,   TJp1)   += fact3;
+        Kh(TIp1, TJp1)   += fact3;
+        //Kh(TIp2, TJp1)   += fact3;
+
+        fact4 = fact2 * NL[jj];
+
+        Kv(TJ, TI)       += fact4;
+        //Kv(TJ, TIp1)     += fact4;
+        //Kv(TJ, TIp2)     += fact4;
+
+        //Kv(TJp1, TI)     += fact4;
+        Kv(TJp1, TIp1)   += fact4;
+        //Kv(TJp1, TIp2)   += fact4;
       }
     }
 

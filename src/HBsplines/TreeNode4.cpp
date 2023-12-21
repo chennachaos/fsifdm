@@ -1528,9 +1528,9 @@ void TreeNode<2>::applyDirichletBCsGFEM(MatrixXd& Klocal, VectorXd& Flocal, int 
 {
   if( DirichletData.size() > 0 )
   {
-    int ii, jj, aa, gp, nGauss, TI, TIp1, TIp2, index, TJ, TJp1, TJp2, dir, side, nU, nP;
+    int ii, jj, aa, gp, nGauss, TI, TIp1, TIp2, index, TJ, TJp1, TJp2, dir, side, nU, nP, profile_type;
     double theta, y0, y1, Ta, Tb, res, JacTemp, af, temp, NitscheFact;
-    double  uu, vv, dvol, specVal, PENALTY, Jac, fact, rad, R, bb1, bb2;
+    double  uu, vv, dvol, specVal, PENALTY, Jac, fact, rad, R, bb1, bb2, l0, l1, Umagn;
     bool  isNitsche;
 
     myPoint  param, geom, normal, trac;
@@ -1567,27 +1567,33 @@ void TreeNode<2>::applyDirichletBCsGFEM(MatrixXd& Klocal, VectorXd& Flocal, int 
       {
        // printVector(DirichletData[aa]);
 
-        isNitsche = false;
+        isNitsche   = false;
         side        = (int) (DirichletData[aa][0] - 1);
         dir         = (int) (DirichletData[aa][1] - 1);
-        specVal     = DirichletData[aa][2];
-        PENALTY     = DirichletData[aa][3];
-        isNitsche   = ( (int) DirichletData[aa][4] == 1 );
-        NitscheFact = DirichletData[aa][5];
 
-        //for symmetric Nitsche method -> NitscheFact = 1.0
+        PENALTY     = DirichletData[aa][2];
+        isNitsche   = ( (int) DirichletData[aa][3] == 1 );
+        NitscheFact = DirichletData[aa][4];
+
+        //for symmetric Nitsche method   -> NitscheFact =  1.0
         //for unsymmetric Nitsche method -> NitscheFact = -1.0
+
+        profile_type  = (int) DirichletData[aa][5];
+        Umagn         = DirichletData[aa][6];
+        l0            = DirichletData[aa][7];
+        l1            = DirichletData[aa][8];
+
 
         //cout << " PENALTY " << PENALTY << endl;
 
         normal = GeomData->boundaryNormals[side];
 
-          nGauss = GeomData->boundaryQuadrature2D[side].gausspoints.size();
+        nGauss = GeomData->boundaryQuadrature2D[side].gausspoints.size();
 
-          gps = &(GeomData->boundaryQuadrature2D[side].gausspoints[0]);
-          gws = &(GeomData->boundaryQuadrature2D[side].gaussweights[0]);
+        gps = &(GeomData->boundaryQuadrature2D[side].gausspoints[0]);
+        gws = &(GeomData->boundaryQuadrature2D[side].gaussweights[0]);
 
-          JacTemp = GeomData->boundaryJacobians[side][level];
+        JacTemp = GeomData->boundaryJacobians[side][level];
 
 
         for(gp=0; gp<nGauss; gp++)
@@ -1623,97 +1629,34 @@ void TreeNode<2>::applyDirichletBCsGFEM(MatrixXd& Klocal, VectorXd& Flocal, int 
             }
 
 
-            specVal = DirichletData[aa][2];
-
-            //
-            if(side == 0 )
+            // constant value
+            if(profile_type == 1 )
             {
-              if(dir == 0)
-              {
-                // heart-valve benchmark
-                //y0 = 0.0;    y1 = 1.61;
-                //specVal = DirichletData[aa][2]*(y1-geom[1])*(geom[1]-y0);
-
-                // single-leaf benchmark
-                y0 = 0.0;    y1 = 2.0;
-                specVal = DirichletData[aa][2]*(y1-geom[1])*(geom[1]-y0);
-
-                //cout << " specVal =  " << specVal << endl;
-
-                //y0=0.0; y1=0.5;
-                //if(geom[1] <= 0.5)
-                  //specVal = DirichletData[aa][2]*(1.0-geom[1]*geom[1]/y1/y1);
-                //else
-                  //specVal = 0.0;
-              }
+                specVal = Umagn;
             }
-            //
-            //
-            //if(side == 3333)
-            //{
-              //if(dir == 0)
-              //{
-                //val = sin(PI*xx);
-                //if(uu<0.5)
-                  //specVal = tanh(20.0*uu);
-                //else
-                  //specVal = -tanh(20.0*(uu-1.0));
-              //}
-            //}
-            //
-            //
-            //if(side == 1110 || side == 1111)
-            //{
-              //if(dir == 0)
-              //{
-                //specVal = DirichletData[aa][2]*(yy-0.25);
-                //specVal = 1.5*yy*(2.0-yy);
-                //if(yy <= y0 || yy >= y1)
-                //if(xx > 1.5)
-                  //specVal = 0.0;
-                //else
-                  //specVal = DirichletData[aa][2]*(y1-yy)*(yy-y0);
-                  //specVal = (y1-xx)*(xx-y0);
-                  //specVal = 3600.0*(1.0-yy*yy/R/R);
-              //}
-            //}
-            //
-            
-            //if(side == 2222)
-            //{
-              //R = 0.5;
-              //if(dir == 1)
-              //{
-                //if(xx >= R)
-                  //specVal = 0.0;
-                //else
-                  //specVal = 1.0*xx*(1.5-xx);
-                  //specVal = 3600.0*(1.0-xx*xx/R/R);
-              //}
-            //}
-            //
-            //
+            // parabolic profile
+            else
+            {
+                // faces parallel to X-axis
+                if(dir == 0 || dir == 1)
+                  specVal = Umagn*(6.0/(l1-l0)/(l1-l0))*(l1-geom[1])*(geom[1]-l0);
+                // faces parallel to Y-axis
+                else
+                  specVal = Umagn*(6.0/(l1-l0)/(l1-l0))*(l1-geom[0])*(geom[0]-l0);
+            }
 
-            //specVal = analy.computeValue(dir, xx, yy);
-            //cout << side << '\t' << dir << '\t' << specVal << endl;
-
-            //cout << " lllllllllll " << endl;
+            // multiply the velocity value with the time factor
             specVal *= timeFunction[0].prop;
             //cout << " lllllllllll " << endl;
-            //res *= mpapTime.cur;
-            //specVal *= tanh(2.0*mpapTime.cur);
-            //res *= sin(2.0*PI*mpapTime.cur+PI/2.0);
-            //res *= sin(2.0*PI*10.0*mpapTime.cur+PI/2.0);
-            //specVal *= 0.5*( 1.0-cos(628.3185*mpapTime.cur));
 
             //cout << aa << '\t' << side << '\t' << dir << '\t' << res << endl;
             //cout << specVal << '\t' << computeValue(dir, N) << endl;
             //cout << " PENALTY = " << PENALTY << endl;
 
-              res = specVal - computeValue(dir, N);
+            res = specVal - computeValue(dir, N);
 
-              for(ii=0;ii<totnlbf2;ii++)
-              {
+            for(ii=0;ii<totnlbf2;ii++)
+            {
                 fact = N[ii] * dvol * PENALTY;
 
                 TI = ndof*ii+dir;
@@ -1725,7 +1668,7 @@ void TreeNode<2>::applyDirichletBCsGFEM(MatrixXd& Klocal, VectorXd& Flocal, int 
                 {
                   Klocal(TI, ndof*jj+dir) += fact * N[jj];
                 }
-              }
+            }
 
 
           // terms corresponding to Nitsche method for Stokes and Navier-Stokes

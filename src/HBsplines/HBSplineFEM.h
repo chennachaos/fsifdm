@@ -38,15 +38,8 @@ class HBSplineFEM: public HBSplineBase
 
         void  createImmersedBoundaryPoints();
 
-        void  ImmersedBoundaryBodyForceLSFEM();
-
         void  applyInterfaceTerms2D();
         void  applyInterfaceTerms3D();
-
-        void  ImmersedBoundaryBodyForce();
-        void  ImmersedBoundaryBodyForce1D();
-        void  ImmersedBoundaryBodyForce2D();
-        void  ImmersedBoundaryBodyForce3D();
 
         virtual  void  solveSolidProblem();
 
@@ -70,6 +63,8 @@ class HBSplineFEM: public HBSplineBase
         virtual  void  updateIterStep();
 
         virtual  void  reset();
+
+        virtual  void storeVariables();
 
         virtual  int  prepareMatrixPattern();
 

@@ -504,6 +504,11 @@ void ImmersedFlexibleSolid::postProcess(int index)
 
         pt[0] = pointsVTK->InsertNextPoint(xx, yy, 0.0);
 
+        vertVTK->GetPointIds()->SetId(0, pt[0]);
+
+        uGridVTK->InsertNextCell(vertVTK->GetCellType(), vertVTK->GetPointIds());
+
+
         //kk = node_map_old_to_new[ii]*ndof;
         kk = ii*ndof;
 
@@ -811,7 +816,7 @@ void  ImmersedFlexibleSolid::updateDisplacement(double* data)
       soln[assy4r[kk]] = data[kk];
     }
 
-    SolnData.var1Dot = soln;
+    SolnData.var1 = soln;
 
     //cout << " totalDOF " << totalDOF << endl;
     //printVector(SolidSolnData.disp);
@@ -819,6 +824,34 @@ void  ImmersedFlexibleSolid::updateDisplacement(double* data)
     return;
 }
 
+
+
+
+
+void  ImmersedFlexibleSolid::updateVelocity(double* data)
+{
+    ///////////////////////////////
+    // velocity for the solid element nodes
+    // velocity is considered as the primary variable for the solid problem
+    // in order to be consistent with the fluid problem
+
+    //cout << " totalDOF " << totalDOF << endl;
+    soln.setZero();
+    // update solution vector
+    for(int kk=0;kk<totalDOF;kk++)
+    {
+      //cout << kk << '\t' << assy4r[kk] << endl;
+      //cout << kk << '\t' << data[kk] << endl;
+      soln[assy4r[kk]] = data[kk];
+    }
+
+    SolnData.var1Dot = soln;
+
+    //cout << " totalDOF " << totalDOF << endl;
+    //printVector(SolidSolnData.disp);
+
+    return;
+}
 
 
 

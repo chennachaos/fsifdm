@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include "SolverPardisoEigen.h"
-#include "FunctionsSolver.h"
+#include "pardiso.h"
 #include "FunctionsProgram.h"
 #include "SolverTime.h"
 #include "ComputerTime.h"
@@ -50,7 +50,7 @@ SolverPardisoEigen::~SolverPardisoEigen()
   phase = -1; error = 0;
 
 #ifdef PARDISO_SOLVER
-  pardiso_(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
+  pardiso(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
            &nRow, array, &csr[0], &col[0], &perm[0], &NRHS,
            IPARM, &MSGLVL, &ddum, &ddum, &error, DPARM);
 #endif
@@ -129,7 +129,7 @@ int SolverPardisoEigen::initialise(int numProc, int matrixType, int nr)
 */
 
 #ifdef PARDISO_SOLVER
-  pardisoinit_(PT, &MTYPE, &SOLVER, IPARM, DPARM, &error);
+  pardisoinit(PT, &MTYPE, &SOLVER, IPARM, DPARM, &error);
 #endif
 
   if (error != 0)
@@ -159,7 +159,7 @@ int SolverPardisoEigen::initialise(int numProc, int matrixType, int nr)
   perm.resize(nRow);
 
 #ifdef PARDISO_SOLVER
-  pardiso_(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
+  pardiso(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
            &nRow, array, &csr[0], &col[0], &perm[0], &NRHS,
            IPARM, &MSGLVL, &ddum, &ddum, &error, DPARM);
 #endif
@@ -196,7 +196,7 @@ int SolverPardisoEigen::factorise()
   computerTime.go(fct);
 
 #ifdef PARDISO_SOLVER
-  pardiso_(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
+  pardiso(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
            &nRow, array, &csr[0], &col[0], &perm[0], &NRHS,
            IPARM, &MSGLVL, &ddum, &ddum, &error, DPARM);
 #endif
@@ -227,7 +227,7 @@ int SolverPardisoEigen::solve()
   soln.setZero();
 
 #ifdef PARDISO_SOLVER
-  pardiso_(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
+  pardiso(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
            &nRow, array, &csr[0], &col[0], &perm[0], &NRHS,
            IPARM, &MSGLVL, &rhsVec[0], &soln[0], &error, DPARM);
 #endif
@@ -254,7 +254,7 @@ int SolverPardisoEigen::factoriseAndSolve()
   soln.setZero();
 
 #ifdef PARDISO_SOLVER
-  pardiso_(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
+  pardiso(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
            &nRow, array, &csr[0], &col[0], &perm[0], &NRHS,
            IPARM, &MSGLVL, &rhsVec[0], &soln[0], &error, DPARM);
 #endif
@@ -281,7 +281,7 @@ int SolverPardisoEigen::free()
   phase = -1; error = 0;
 
 #ifdef PARDISO_SOLVER
-  pardiso_(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
+  pardiso(PT, &MAXFCT, &MNUM, &MTYPE, &phase,
            &nRow, array, &csr[0], &col[0], &perm[0], &NRHS,
            IPARM, &MSGLVL, &ddum, &ddum, &error, DPARM);
 #endif

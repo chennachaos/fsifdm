@@ -5,10 +5,10 @@
 #include "SolverMA41Eigen.h"
 #include "MpapTime.h"
 #include "TimeFunction.h"
-
+#include "TimeFunction.h"
 
 extern MpapTime           mpapTime;
-
+extern List<TimeFunction> timeFunction;
 
 
 void HBSplineFEM::setTimeParam()
@@ -31,14 +31,20 @@ void HBSplineFEM::timeUpdate()
 {
   //cout << " HBSplineBase::timeUpdate() ... STARTED " << endl;
 
+  mpapTime.prev2 = mpapTime.prev;
+  mpapTime.prev  = mpapTime.cur;
+  mpapTime.cur  += mpapTime.dt;
+
+  for(int i=0; i<timeFunction.n; i++)
+    timeFunction[i].update();
+
+
   IB_MOVED = false;
 
   firstIter = true;
   localStiffnessError = 0;
   iterCount = 1;
   filecount++;
-
-  //ImmersedBoundaryBodyForceLSFEM();
 
   //if(!STAGGERED)
   //{
@@ -47,25 +53,6 @@ void HBSplineFEM::timeUpdate()
   //}
 
   SolnData.timeUpdate();
-
-  //cout << " zzzzzzzzzzzzzz " << endl;
-  //if(LSFEM_FLAG)
-    //ImmersedBoundaryBodyForceLSFEM();
-  //else
-  //{
-/*
-    if(STAGGERED)
-    {
-      solveSolidProblem();
-      updateImmersedPointPositions();
-      //IB_MOVED = true;
-    }
-  //}
-  //
-*/
-  //ImmersedBoundaryBodyForceLSFEM();
-
-  updateIterStep();
 
   //cout << " HBSplineBase::timeUpdate() ... FINISHED " << endl;
 
@@ -92,7 +79,7 @@ void HBSplineFEM::updateIterStep()
     for(bb=0;bb<ImmersedBodyObjects.size();bb++)
     {
       //cout << " AAAAAAAAAAA " << bb << endl;
-      ImmersedBodyObjects[bb]->updateDisplacement(&(SolnData.var4(0)));
+      ImmersedBodyObjects[bb]->updateVelocity(&(SolnData.var4(0)));
       //cout << " AAAAAAAAAAA " << bb << endl;
       ImmersedBodyObjects[bb]->updateIterStep();
       //cout << " AAAAAAAAAAA " << bb << endl;
@@ -103,7 +90,6 @@ void HBSplineFEM::updateIterStep()
 
   //cout << " kkkkkkkkkkk " << GRID_CHANGED << '\t' << IB_MOVED << endl;
 
-  //cout << " PPPPPPPPPPPPPPPPP " << firstIter << '\t' << SOLVER_TYPE << '\t' << GRID_CHANGED << '\t' << IB_MOVED << endl;
   if(GRID_CHANGED || IB_MOVED)
   {
       solverEigen->free();
@@ -157,13 +143,23 @@ void HBSplineFEM::updateIterStep()
 
 
 
+void HBSplineFEM::storeVariables()
+{
+  SolnData.storeVariables();
+
+  for(int bb=0;bb<ImmersedBodyObjects.size();bb++)
+    ImmersedBodyObjects[bb]->storeVariables();
+
+  return;
+}
+
+
 void HBSplineFEM::reset()
 {
   SolnData.reset();
 
   for(int bb=0;bb<ImmersedBodyObjects.size();bb++)
-    //if(ImmersedBodyObjects[bb]->getNdof() > 0)
-      ImmersedBodyObjects[bb]->reset();
+    ImmersedBodyObjects[bb]->reset();
 
   return;
 }

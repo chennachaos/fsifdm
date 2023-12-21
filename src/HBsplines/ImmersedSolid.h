@@ -304,12 +304,14 @@ class ImmersedSolid
 
         virtual bool  converged();
 
-        virtual void  solveTimeStep()
-        { cout << "   'solveTimeStep()' is not defined for this Solid!\n\n"; return; }
+        virtual int  solveTimeStep()
+        { cout << "   'solveTimeStep()' is not defined for this Solid!\n\n"; return 0; }
 
         virtual void  timeUpdate();
 
         virtual void  updateIterStep();
+
+        virtual void storeVariables();
 
         virtual void  reset();
 
@@ -366,6 +368,9 @@ class ImmersedSolid
 
         virtual void  updateDisplacement(double*)
         { cout << "   'updateDisplacement()' is not defined for this Solid!\n\n"; return; }
+
+        virtual void  updateVelocity(double*)
+        { cout << "   'updateVelocity()' is not defined for this Solid!\n\n"; return; }
 
         virtual void  resetMatrixAndVector()
         { cout << "   'resetMatrixAndVector()' is not defined for this Solid!\n\n"; return; }

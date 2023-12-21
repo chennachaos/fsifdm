@@ -19,7 +19,6 @@ class ImmersedFlexibleSolid : public ImmersedSolid
         vector<int>  node_map_new_to_old, node_map_old_to_new;
         vector<int>  dof_map_new_to_old, dof_map_old_to_new;
 
-
         LagrangeElement  **elems;
 
         ImmersedFlexibleSolid();
@@ -44,7 +43,9 @@ class ImmersedFlexibleSolid : public ImmersedSolid
 
         virtual int   calcStiffnessAndResidual(int solver_type, bool zeroMtx, bool zeroRes);
 
-        virtual void  calcForceVector();
+        virtual void  calcForceVector(double* rhs);
+
+        virtual void  calcForceVectorMonolithic(double* rhs);
 
         virtual int  applyBoundaryConditions(int start1, int start2, SparseMatrixXd& globalK, double* rhs);
 
@@ -52,7 +53,7 @@ class ImmersedFlexibleSolid : public ImmersedSolid
 
         virtual int  applyExternalForces();
 
-        virtual void  solveTimeStep();
+        virtual int  solveTimeStep();
 
         virtual void  writeOutput();
 
@@ -69,6 +70,8 @@ class ImmersedFlexibleSolid : public ImmersedSolid
         virtual void  updateForce(double*);
 
         virtual void  updateDisplacement(double*);
+
+        virtual void  updateVelocity(double*);
 
         int  factoriseSolveAndUpdate();
 

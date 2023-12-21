@@ -21,16 +21,16 @@ class  SolutionData
 
     MatrixXd  solnCFM;
 
-    VectorXd  var1, var1Prev, var1Cur, var1Dot, var1DotPrev, var1DotCur, var1DotDot, var1DotDotPrev, var1DotDotCur, var1PrevIteration;
+    VectorXd  var1, var1Prev, var1Cur, var1Dot, var1DotPrev, var1DotCur, var1DotDot, var1DotDotPrev, var1DotDotCur;
     VectorXd  var2, var2Prev, var2Cur, var2Dot, var2DotPrev, var2DotCur, var2DotDot, var2DotDotPrev, var2DotDotCur;
     VectorXd  var3, var3Prev, var3Cur, var4, var4Prev, var4Cur;
-    VectorXd  dDot, dDotPrev, var1PrevIter;
+    VectorXd  dDot, dDotPrev, var1PrevIter, var1PrevIteration, var1PrevIteration2;
     VectorXd  var1Init, var2Init, vorticity, var1applied, var1Prev2, var1Prev3, var1Prev4, var1Extrap;
     
     vector<double>  FluidProps, stagParams;
 
     VectorXd  td, rhsVec, forcePred, forceCur, reac;
-    VectorXd  force, forcePrev, forcePrev2, forcePrev3, forcePrev4, forcePrev5, forcePrev6, forcePrevIteration;
+    VectorXd  force, forcePrev, forcePrev2, forcePrev3, forcePrev4, forcePrev5, forcePrev6, forcePrevIteration, forcePrevIteration2;
     VectorXd  soln, solnInit, forceTemp, forceTempPrev;
     VectorXd  bodyForce, bodyForceCur, bodyForcePrev, bodyForcePrev2, bodyForcePred, bodyForcePredPrev, bodyForcePredPrev2;
 
@@ -76,6 +76,8 @@ class  SolutionData
     void  timeUpdate();
 
     void  updateIterStep();
+
+    void  storeVariables();
 
     void  reset();
 

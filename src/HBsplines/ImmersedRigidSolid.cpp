@@ -804,7 +804,7 @@ void ImmersedRigidSolid::updateDisplacement(double* data)
 }
 
 
-void ImmersedRigidSolid::solveTimeStep()
+int ImmersedRigidSolid::solveTimeStep()
 {
   if( totalDOF > 0 )
   {
@@ -831,7 +831,7 @@ void ImmersedRigidSolid::solveTimeStep()
     //printf("\n Solving Immersed Rigid Solid ..... DONE  \n\n");
   }
 
-  return;
+  return 0;
 }
 
 

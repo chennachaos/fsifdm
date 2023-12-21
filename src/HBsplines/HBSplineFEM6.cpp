@@ -461,6 +461,12 @@ void HBSplineFEM::prepareMatrixPatternLagrangeMultipliers()
 
 void HBSplineFEM::prepareMatrixPatternSolid()
 {
+    if(SOLIDSOLVER_PATTERN_DONE)
+        return;
+
+
+    cout << " HBSplineFEM::prepareMatrixPatternSolid() ... STARTED " << endl;
+
     int  r, c, ii, jj, bb;
 
     //DDconnG.clear();
@@ -480,6 +486,7 @@ void HBSplineFEM::prepareMatrixPatternSolid()
     for(ii=0; ii<IBDOF; ii++)
       DDconnHt[ii].clear();
 
+    cout << " aaaaaaaaaaaaa " << endl;
 
     for(bb=0;bb<ImmersedBodyObjects.size();bb++)
     {
@@ -487,23 +494,29 @@ void HBSplineFEM::prepareMatrixPatternSolid()
         {
           for(jj=0;jj<ImmersedBodyObjects[bb]->forAssyMat[ii].size();jj++)
           {
+            //cout << bb << '\t' << ii << '\t' << jj << '\t' << ImmersedBodyObjects[bb]->forAssyMat[ii][jj] << endl;
             DDconnG[ii].push_back(ImmersedBodyObjects[bb]->forAssyMat[ii][jj]);
           }
         }
 
         // connectivity for coupled matrices
+        cout << " connectivity for coupled matrices " << endl;
+        cout << " ImmersedBodyObjects[bb]->forAssyCoupledHorz.size() = " << ImmersedBodyObjects[bb]->forAssyCoupledHorz.size() << endl;
 
         for(ii=0;ii<ImmersedBodyObjects[bb]->forAssyCoupledHorz.size();ii++)
         {
+          //printVector(ImmersedBodyObjects[bb]->forAssyCoupledHorz[ii]);
           for(jj=0;jj<ImmersedBodyObjects[bb]->forAssyCoupledHorz[ii].size();jj++)
           {
             c = ImmersedBodyObjects[bb]->forAssyCoupledHorz[ii][jj];
+            //cout << bb << '\t' << ii << '\t' << jj << '\t' << c << endl;
             DDconnH[ii].push_back(c);
             DDconnHt[c].push_back(ii);
           }
         }
     }//for(bb=0;...
 
+  cout << " contact elements " << endl;
   for(bb=0;bb<contactElementObjects.size();bb++)
   {
     for(ii=0;ii<2;ii++)
@@ -514,6 +527,8 @@ void HBSplineFEM::prepareMatrixPatternSolid()
       }
     }
   }
+  
+  SOLIDSOLVER_PATTERN_DONE = true;
 
   return;
 }

@@ -13,6 +13,310 @@ extern  MpapTime  mpapTime;
 
 
 
+
+int  HBSplineBase::solve_fsi(int maxSteps, double tol_local)
+{
+    if(STAGGERED)
+      return  fsi_staggered_force_predictor(maxSteps, tol_local);
+    else
+      return  fsi_monolithic(maxSteps, tol_local);
+}
+
+
+
+
+int  HBSplineBase::fsi_monolithic(int maxSteps, double tol_local)
+{
+  PetscPrintf(MPI_COMM_WORLD, " HBSplineBase::fsi_monolithic() \n");
+
+  // iterate
+  //   1.) create matrix and vector
+  //   2.) IF, converged
+  //          update the solution
+  //       ELSE
+  //          continue
+  //       END
+  // end iterate
+
+
+  VectorXd  resiIntf, resiIntfPrev, forceIntf, forceIntfPrev;
+  VectorXd  vecTemp;
+  double  normTemp, tolTemp=1.0e-4;
+  double  timeFinal = 100000.0;
+  int  stepsCompleted=1;//, maxSteps = 2;
+
+  bool  converg=false;
+  int  iter=0, bb, resln[]={1,1,1}, max_iter=5;
+
+  
+  while( (stepsCompleted <= maxSteps) && (mpapTime.cur <= timeFinal) )
+  {
+      // initialise the variables for the start of time step
+      timeUpdate();
+
+      // set time integration parameters
+      setTimeParam();
+
+      cout << " -------------------------------- \n "<< endl;
+      cout << " Current time = " << mpapTime.cur << endl;
+      cout << " -------------------------------- \n " << endl;
+
+
+      converg = false;
+      for(int iter=1;iter<=10; iter++)
+      {
+        firstIter = (iter == 1);
+
+        SolnData.firstIter = firstIter;
+        for(int bb=0;bb<ImmersedBodyObjects.size();bb++)
+          ImmersedBodyObjects[bb]->firstIter = firstIter;
+
+        //cout << " Fluid ... updateIterStep " << endl;
+        updateIterStep();
+        //cout << " Fluid ... updateIterStep " << endl;
+
+        calcStiffnessAndResidual(1, 1, 1);
+
+        printf("\t %5d \t %12.6E\n", iter, rNorm);
+        //printf("\t %5d \t %5d \t %12.6E\n", ii, firstIter, rNorm);
+
+        if(converged())
+        {
+          converg = true;
+          break;
+        }
+
+        //cout << " Fluid ... factoriseSolveAndUpdate " << endl;
+        factoriseSolveAndUpdate();
+        //cout << " Fluid ... factoriseSolveAndUpdate " << endl;
+      }
+
+      if(converg)
+      {
+        // write output
+        postProcessFlow(1, 1, 10, 1, 0.0, 1.0, resln);
+
+        writeNodalData();
+
+        storeVariables();
+
+        mpapTime.stck();
+
+        stepsCompleted++;
+      }
+      else
+      {
+          mpapTime.cut();
+
+          reset();
+      }
+  }
+
+  return 0;
+}
+
+
+
+
+int  HBSplineBase::fsi_staggered_force_predictor(int maxSteps, double tol_local)
+{
+  cout << " HBSplineBase::fsi_staggered_force_predictor() " << endl;
+
+  //
+  // Staggered scheme by Dettmer and Peric
+  // A new staggered scheme for fluid-structure interaction
+  // 
+
+  //   1.) predict force on the solid ---> fSP
+  //   2.) solve solid problem to get structural displacement ---> dS
+  //   3.) Update the interface location
+  //   4.) Compute interface velocity
+  //   5.) Solve the fluid problem
+  //   6.) Compute the interface force
+  //   7.) Relax interface force
+
+
+  VectorXd  resiIntf, resiIntfPrev, forceIntf, forceIntfPrev;
+  VectorXd  vecTemp;
+  double  normTemp, tolTemp=1.0e-4, dtDdtn, q1, q2;
+  double  timeFinal = 100000.0, timeNow=0.0;
+  int  stepsCompleted=1;//, maxSteps = 2;
+
+  bool  converg=false;
+  int  iter=0, bb, resln[]={1,1,1}, max_iter=1;
+
+  int  predType = (int) ImmersedBodyObjects[0]->SolnData.stagParams[1];
+
+
+
+
+  while( (stepsCompleted <= maxSteps) && (mpapTime.cur <= timeFinal) )
+  {
+      // initialise the variables for the start of time step
+      timeUpdate();
+
+      // set time integration parameters
+      setTimeParam();
+
+      cout << " -------------------------------- \n "<< endl;
+      cout << " Current time = " << mpapTime.cur << endl;
+      cout << " -------------------------------- \n " << endl;
+
+      if(predType ==  1)
+      {
+        q1 =  1.0;  q2 =  0.0;
+      }
+      else
+      {
+        dtDdtn = mpapTime.dt/mpapTime.dtPrev;
+        q1 = 1+dtDdtn;
+        q2 = -dtDdtn;
+        
+        cout << "dtDdtn ... " << mpapTime.dt << '\t' << mpapTime.dtPrev << '\t' << dtDdtn << endl;
+      }
+
+      //   1.) predict force on the solid ---> fSP
+      for(bb=0; bb<nImmSolids; bb++)
+      {
+        ImmersedBodyObjects[bb]->SolnData.force = q1*ImmersedBodyObjects[bb]->SolnData.forcePrev + q2*ImmersedBodyObjects[bb]->SolnData.forcePrev2;
+
+        ImmersedBodyObjects[bb]->SolnData.var1PrevIteration2.setZero();
+        ImmersedBodyObjects[bb]->SolnData.var1PrevIteration.setZero();
+
+        //ImmersedBodyObjects[bb]->SolnData.var1 = ImmersedBodyObjects[bb]->SolnData.var1Prev + mpapTime.dt*ImmersedBodyObjects[bb]->SolnData.var1DotPrev;
+      }
+
+    //for(iter=1; iter<=max_iter; iter++)
+    //{
+      for(bb=0; bb<nImmSolids; bb++)
+      {
+        double  af =  ImmersedBodyObjects[bb]->SolnData.td[2];
+
+        ImmersedBodyObjects[bb]->SolnData.forceCur = af*ImmersedBodyObjects[bb]->SolnData.force + (1.0-af)*ImmersedBodyObjects[bb]->SolnData.forcePrev;
+
+        ImmersedBodyObjects[bb]->SolnData.var1PrevIteration2 = ImmersedBodyObjects[bb]->SolnData.var1PrevIteration;
+        ImmersedBodyObjects[bb]->SolnData.var1PrevIteration  = ImmersedBodyObjects[bb]->SolnData.var1;
+      }
+
+
+      //   2.) solve solid problem to get structural displacement ---> dS
+      //solveSolidProblem();
+
+      IB_MOVED = false;
+      SOLID_PROBLEM_CONVERGED = false;
+      FLUID_PROBLEM_CONVERGED = false;
+
+      for(bb=0; bb<nImmSolids; bb++)
+      {
+        //cout << " Lagrange multipliers " << endl;        printVector(&(FluidSolnData.var3(0)), IBDOF);
+        //ImmersedBodyObjects[bb]->updateForce(&(totalForce(0)));
+
+        //cout << " kkkkkkkkkkk " << endl;
+        SOLID_PROBLEM_CONVERGED = (ImmersedBodyObjects[bb]->solveTimeStep() == 0);
+
+        //IB_MOVED = (IB_MOVED || ImmersedBodyObjects[bb]->updatePointPositions() );
+
+        //if(iter > 3)
+        //{
+          //ImmersedBodyObjects[bb]->SolnData.perform_Aitken_accelerator_force();
+          //ImmersedBodyObjects[bb]->SolnData.perform_Aitken_accelerator_displacement();
+          //ImmersedBodyObjects[bb]->updateIterStep();
+        //}
+
+        VectorXd  vecTemp = ImmersedBodyObjects[bb]->SolnData.var1PrevIteration - ImmersedBodyObjects[bb]->SolnData.var1;
+        normTemp = vecTemp.norm();
+
+        PetscPrintf(MPI_COMM_WORLD, " Displacement convergence ...  Iter = %5d \t \t %11.4E\n", iter, normTemp);
+      }
+
+      //   3.) Update the interface location
+      //   4.) Compute interface velocity
+
+      if(SOLID_PROBLEM_CONVERGED)
+      {
+        // update the position of immersed boundaries and velocity boundary conditions
+        cout << " updateImmersedPointPositions() " << endl;
+        updateImmersedPointPositions();
+
+
+        // update variables and recompute the matrix pattern
+        cout << " updateIterStep() " << endl;
+        updateIterStep();
+
+
+        //   5.) Solve the fluid problem
+        cout << " solveFluidProblem() " << endl;
+        solveFluidProblem();
+      }
+
+      //   6.) Compute the interface force
+      //   7.) Relax interface force
+
+      if(FLUID_PROBLEM_CONVERGED)
+      {
+        cout << " relax force " << endl;
+        for(bb=0; bb<nImmSolids; bb++)
+        {
+          //cout << " update force " << endl;
+          // This is for FDM
+          ImmersedBodyObjects[bb]->updateForce();
+
+          double relaxPara = ImmersedBodyObjects[bb]->SolnData.stagParams[2];
+
+          ImmersedBodyObjects[bb]->SolnData.forcePrevIteration2  =  ImmersedBodyObjects[bb]->SolnData.forcePrevIteration;
+          ImmersedBodyObjects[bb]->SolnData.forcePrevIteration   =  ImmersedBodyObjects[bb]->SolnData.force;
+
+          cout << " update force " << relaxPara <<  endl;
+          ImmersedBodyObjects[bb]->SolnData.force  =  relaxPara*ImmersedBodyObjects[bb]->SolnData.forceTemp + (1.0-relaxPara)*ImmersedBodyObjects[bb]->SolnData.force;
+
+          VectorXd  vecTemp = ImmersedBodyObjects[bb]->SolnData.force - ImmersedBodyObjects[bb]->SolnData.forcePrevIteration; 
+          normTemp = vecTemp.norm();
+
+          PetscPrintf(MPI_COMM_WORLD, " Force convergence ...  Iter = %5d \t \t %11.4E\n", iter, normTemp);
+
+          //if(iter > 4)
+          //{
+            //ImmersedBodyObjects[bb]->SolnData.perform_Aitken_accelerator_force();
+            //ImmersedBodyObjects[bb]->SolnData.perform_Aitken_accelerator_displacement();
+          //}
+        } // for(bb=0; bb<nImmSolids; bb++)
+        cout << " relax force DONE " << endl;
+      }
+      
+      if( SOLID_PROBLEM_CONVERGED && FLUID_PROBLEM_CONVERGED)
+      {
+        // write output
+        postProcessFlow(1, 1, 10, 1, 0.0, 1.0, resln);
+
+        writeNodalData();
+
+        storeVariables();
+      
+        mpapTime.stck();
+
+        stepsCompleted++;
+      }
+      else
+      {
+          mpapTime.cut();
+
+          reset();
+      }
+
+    //} for(iter=0; iter<max_iter; iter++)
+
+  }
+
+  return 0;
+}
+
+
+
+
+
+
+
+
 int  HBSplineBase::fsi_monolithic_fixedpoint_forcePred(int max_iter, double tol_local)
 {
   //cout << " HBSplineBase::fsi_monolithic_fixedpoint_forcePred() " << endl;
@@ -110,7 +414,7 @@ int  HBSplineBase::fsi_monolithic_fixedpoint_forcePred(int max_iter, double tol_
         normTemp = vecTemp.squaredNorm();
 
         relaxParaPrev = relaxPara;
-        
+
         if(iter > 1)
         {
           //ImmersedBodyObjects[bb]->perform_Aitken_accelerator_force();
@@ -139,6 +443,7 @@ int  HBSplineBase::fsi_monolithic_fixedpoint_forcePred(int max_iter, double tol_
   
   return 1;
 }
+
 
 /*
 
@@ -327,137 +632,6 @@ int  HBSplineBase::fsi_monolithic_fixedpoint_dispPred(int max_iter, double tol_l
 
 
 
-
-int  HBSplineBase::fsi_staggered_force_predictor(int max_iter, double tol_local)
-{
-  cout << " HBSplineBase::fsi_staggered_force_predictor() " << endl;
-
-  //
-  // Staggered scheme by Dettmer and Peric
-  // A new staggered scheme for fluid-structure interaction
-  // 
-
-  //   1.) predict force on the solid ---> fSP
-  //   2.) solve solid problem to get structural displacement ---> dS
-  //   3.) Update the interface location
-  //   4.) Compute interface velocity
-  //   5.) Solve the fluid problem
-  //   6.) Compute the interface force
-  //   7.) Relax interface force
-
-
-  VectorXd  resiIntf, resiIntfPrev, forceIntf, forceIntfPrev;
-  VectorXd  vecTemp;
-  double  relaxPara=0.5, relaxParaPrev, normTemp, tolTemp=1.0e-4;
-
-  bool  converg=false;
-  int  iter=0, bb, resln[]={1,1,1};
-
-  int  predType = (int) ImmersedBodyObjects[0]->SolnData.stagParams[1];
-
-  double  q1, q2;
-  if(predType ==  1)
-  {
-    q1 =  1.0;  q2 =  0.0;
-  }
-  else
-  {
-    q1 =  2.0;  q2 = -1.0;
-  }
-
-
-  //   1.) predict force on the solid ---> fSP
-  for(bb=0; bb<nImmSolids; bb++)
-  {
-    ImmersedBodyObjects[bb]->SolnData.force = q1*ImmersedBodyObjects[bb]->SolnData.forcePrev + q2*ImmersedBodyObjects[bb]->SolnData.forcePrev2;
-  }
-
-
-  for(iter=0; iter<max_iter; iter++)
-  {
-    for(bb=0; bb<nImmSolids; bb++)
-    {
-      double  af =  ImmersedBodyObjects[bb]->SolnData.td[2];
-
-      ImmersedBodyObjects[bb]->SolnData.forceCur = af*ImmersedBodyObjects[bb]->SolnData.force + (1.0-af)*ImmersedBodyObjects[bb]->SolnData.forcePrev;
-
-      ImmersedBodyObjects[bb]->SolnData.var1PrevIteration = ImmersedBodyObjects[bb]->SolnData.var1;
-    }
-
-
-    //   2.) solve solid problem to get structural displacement ---> dS
-
-    solveSolidProblem();
-
-    cout << "  Tip displacement = " <<  ImmersedBodyObjects[0]->SolnData.var1[40*3+2] << endl;
-
-    for(bb=0; bb<nImmSolids; bb++)
-    {
-      VectorXd  vecTemp = ImmersedBodyObjects[bb]->SolnData.var1PrevIteration - ImmersedBodyObjects[bb]->SolnData.var1;
-      normTemp = vecTemp.norm();
-
-      PetscPrintf(MPI_COMM_WORLD, " Displacement convergence ...  Iter = %5d \t \t %11.4E\n", iter, normTemp);
-    }
-
-    //   3.) Update the interface location
-    //   4.) Compute interface velocity
-
-    cout << " updateImmersedPointPositions() " << endl;
-    updateImmersedPointPositions();
-
-
-    cout << " updateIterStep() " << endl;
-    updateIterStep();
-
-
-    //   5.) Solve the fluid problem
-    cout << " solveFluidProblem() " << endl;
-    solveFluidProblem();
-
-    //   6.) Compute the interface force
-    //   7.) Relax interface force
-
-    //postProcessFlow(1, 1, 10, 1, 0.0, 1.0, resln);
-
-    cout << " relax force " << endl;
-    for(bb=0; bb<nImmSolids; bb++)
-    {
-      //cout << " computeTotalForce() " << endl;
-      // This is for CutFEM
-      //computeTotalForce(bb);
-
-      cout << " update force " << endl;
-      // This is for CutFEM
-      //ImmersedBodyObjects[bb]->updateForce(&(totalForce(0)));
-      // This is for FDM
-      ImmersedBodyObjects[bb]->updateForce();
-
-      double beta = ImmersedBodyObjects[bb]->SolnData.stagParams[2];
-
-      ImmersedBodyObjects[bb]->SolnData.forcePrevIteration  =  ImmersedBodyObjects[bb]->SolnData.force;
-
-      cout << " update force " << beta <<  endl;
-      ImmersedBodyObjects[bb]->SolnData.force  =  beta*ImmersedBodyObjects[bb]->SolnData.forceTemp + (1.0-beta)*ImmersedBodyObjects[bb]->SolnData.force;
-
-      //VectorXd  vecTemp = ImmersedBodyObjects[bb]->SolnData.force - ImmersedBodyObjects[bb]->SolnData.forcePrevIteration; 
-      //normTemp = vecTemp.norm();
-
-      //PetscPrintf(MPI_COMM_WORLD, " Force convergence ...  Iter = %5d \t \t %11.4E\n", iter, normTemp);
-    } // for(bb=0; bb<nImmSolids; bb++)
-    cout << " relax force DONE " << endl;
-  }
-
-    for(bb=0; bb<nImmSolids; bb++)
-    {
-      //ImmersedBodyObjects[bb]->SolnData.forcePrev3 = ImmersedBodyObjects[bb]->SolnData.forcePrev2;
-      ImmersedBodyObjects[bb]->SolnData.forcePrev2 = ImmersedBodyObjects[bb]->SolnData.forcePrev;
-      ImmersedBodyObjects[bb]->SolnData.forcePrev  = ImmersedBodyObjects[bb]->SolnData.force;
-    } // for(bb=0; bb<nImmSolids; bb++)
-
-  return 0;
-}
-
-
 int  HBSplineBase::fsi_staggered_displacement_predictor(int max_iter, double tol_local)
 {
   cout << " HBSplineBase::fsi_staggered_displacement_predictor() " << endl;
@@ -533,31 +707,33 @@ int  HBSplineBase::fsi_staggered_displacement_predictor(int max_iter, double tol
 }
 
 
-
 int HBSplineBase::solveFluidProblem()
 {
   printf("\n Solving HBSplineBase::solveFluidProblem() \n");
   //printf("\n External force norm = %12.6E \n", forceCur.norm());
 
-  int  ii;
+  FLUID_PROBLEM_CONVERGED = false;
 
-  for(ii=0;ii<10;ii++)
+  for(int ii=0;ii<5;ii++)
   {
+    //cout << " Fluid ... updateIterStep " << endl;
+    updateIterStep();
+    //cout << " Fluid ... updateIterStep " << endl;
+
     calcStiffnessAndResidual(1, 1, 1);
 
     printf("\t %5d \t %12.6E\n", ii, rNorm);
     //printf("\t %5d \t %5d \t %12.6E\n", ii, firstIter, rNorm);
 
     if(converged())
+    {
+      FLUID_PROBLEM_CONVERGED = true;
       break;
+    }
 
     //cout << " Fluid ... factoriseSolveAndUpdate " << endl;
     factoriseSolveAndUpdate();
     //cout << " Fluid ... factoriseSolveAndUpdate " << endl;
-
-    //cout << " Fluid ... updateIterStep " << endl;
-    updateIterStep();
-    //cout << " Fluid ... updateIterStep " << endl;
   }
 
   printf("\n Solving HBSplineBase::solveFluidProblem() ..... DONE  \n\n");

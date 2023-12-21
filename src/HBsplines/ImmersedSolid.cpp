@@ -88,8 +88,8 @@ void ImmersedSolid::timeUpdate()
 
   SolnData.timeUpdate();
 
-  if(STAGGERED)
-    updateIterStep();
+  //if(STAGGERED)
+    //updateIterStep();
 
   return;
 }
@@ -105,6 +105,14 @@ void ImmersedSolid::updateIterStep()
   return;
 }
 
+
+
+void ImmersedSolid::storeVariables()
+{
+  SolnData.storeVariables();
+
+  return;
+}
 
 
 void ImmersedSolid::reset()

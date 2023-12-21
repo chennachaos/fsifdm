@@ -37,6 +37,10 @@ HBSplineFEM::HBSplineFEM()
     CREATE_POSTPROCESS_GRID = true;
     FACTORISED = false;
 
+    FLUID_PROBLEM_CONVERGED = false; SOLID_PROBLEM_CONVERGED = false;
+
+    SOLIDSOLVER_PATTERN_DONE = false;
+
     // add new type
 
     DomainType *hbsplinefem = domain.newType(HBSPLINEFEM, ROOTDOMAIN);

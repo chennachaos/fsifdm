@@ -94,9 +94,9 @@ int ElementGeomExactBeam2D::calcStiffnessAndResidual(MatrixXd& Klocal, VectorXd&
 
     int  ii, jj, gp, kk, ll, TI, TIp1, TIp2, count, TJ, TJp1, TJp2, ind1, ind2;
 
-    double  sth0, cth0, uxn[2], uzn[2], btn[2], b[2], af, d1, x0[2], y0[2], x1[2], y1[2], xx[2];
+    double  sth0, cth0, uxn[2], uzn[2], btn[2], bforce[2], af, d1, x0[2], y0[2], x1[2], y1[2], xx[2];
 
-    double  ux, uz, bt, sbt, cbt, dux, duz, dbt, detJ, aa, h;
+    double  ux, uz, bt, sbt, cbt, dux, duz, dbt, detJ, veloFactor, h;
     double  rho, A, E, G, I, nu, EA, GA, EI, K, SF, NF, BM, kappa, dvol;
     double  fact, fact1, fact2, fact3, fact4, EAdv, GAdv, EIdv;
     double  u1, u2, w1, w2, ddu[2], ddw[2], dx, dy, Nf[2];
@@ -112,11 +112,13 @@ int ElementGeomExactBeam2D::calcStiffnessAndResidual(MatrixXd& Klocal, VectorXd&
     double *elmDat = &(SolnData->ElemProp[elmType].data[0]);
 
     nGP = 1;
-    //b[0] = elmDat[0];
-    //b[1] = elmDat[1];
-    b[0] = 0.0;
-    b[1] = 0.0;
+    //b[0] = 0.0;
+    //b[1] = 0.0;
     rho  = elmDat[2];
+
+    bforce[0] = rho*elmDat[0];
+    bforce[1] = rho*elmDat[1];
+
     A    = elmDat[3];
     I    = elmDat[4];
     E    = elmDat[5];
@@ -130,7 +132,7 @@ int ElementGeomExactBeam2D::calcStiffnessAndResidual(MatrixXd& Klocal, VectorXd&
 
     af = SolnData->td(2);
     d1 = SolnData->td(5);
-    aa = SolnData->td(10);
+    veloFactor = SolnData->td(40);
     
     double  *gausspoints  = &(GeomData->gausspoints1[0]);
     double  *gaussweights = &(GeomData->gaussweights1[0]);
@@ -304,6 +306,9 @@ int ElementGeomExactBeam2D::calcStiffnessAndResidual(MatrixXd& Klocal, VectorXd&
           TIp1 =  TI+1;
           TIp2 =  TI+2;
 
+          Flocal[TI]   += dvol*N[ii]*bforce[0];
+          Flocal[TIp1] += dvol*N[ii]*bforce[1];
+
           for(jj=0;jj<nlbf;jj++)
           {
             TJ   = 3*jj;
@@ -349,10 +354,11 @@ int ElementGeomExactBeam2D::calcStiffnessAndResidual(MatrixXd& Klocal, VectorXd&
     Klocal += (d1*Mlocal);
     Flocal -= (Mlocal*accC);
 
-    //Klocal /= aa;
-
     Klocal = (RotMat*Klocal)*RotMatTrans;
     Flocal = RotMat*Flocal;
+
+    if(!SolnData->STAGGERED)
+     Klocal *= veloFactor;
 
     //printMatrix(Klocal); printf("\n\n");
     //printVector(Flocal); printf("\n\n");

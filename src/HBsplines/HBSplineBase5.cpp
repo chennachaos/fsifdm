@@ -232,7 +232,7 @@ void HBSplineBase::setSolver(int slv, int *parm, bool cIO)
 {
     slv_type = slv;
 
-    //PetscPrintf(MPI_COMM_WORLD, " slv_type = %5d \t  %5d. \n", slv, slv_type);
+    PetscPrintf(MPI_COMM_WORLD, " slv_type = %5d \t %5d \n", slv, slv_type);
 
     //Eigen::initParallel();
     Eigen::setNbThreads(0);
@@ -306,7 +306,7 @@ void HBSplineBase::setSolver(int slv, int *parm, bool cIO)
 
             numProc = min(MAX_PROCESSORS,numProc);
 
-            //cout << " numProc " <<  numProc << endl;
+            cout << " numProc " <<  numProc << endl;
 
             solverEigen->STABILISED = true;
 

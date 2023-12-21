@@ -336,28 +336,6 @@ void  HBSplineFEM::createPostProcessGrid2D(int vartype, int vardir, int nCol, bo
 
     count = xx.size();
 
-    if(ndf == 1)
-    {
-      scaVTK->SetName("value");
-      scaVTK->SetNumberOfTuples(count);
-
-      scaVTK2->SetName("force");
-      scaVTK2->SetNumberOfTuples(count);
-
-      for(ii=0;ii<count;ii++)
-      {
-        scaVTK->SetTuple1(ii, 0.0);
-        scaVTK2->SetTuple1(ii, 0.0);
-      }
-
-      //assign nodal coordinates and field data to uGridVTK
-      // no need to create lookup table here. All this stuff can be done in Paraview
-
-      uGridVTK->SetPoints(pointsVTK);
-      uGridVTK->GetPointData()->SetScalars(scaVTK);
-    }
-    if(ndf > 1) // for Stokes and Navier-Stokes
-    {
        vecVTK->SetName("vel");
        //vecVTK2->SetName("grad");
        vecVTK2->SetName("force");
@@ -391,10 +369,8 @@ void  HBSplineFEM::createPostProcessGrid2D(int vartype, int vardir, int nCol, bo
        uGridVTK->GetPointData()->AddArray(vecVTK2);
        uGridVTK->GetPointData()->AddArray(scaVTK2);
        // create a write object and write uGridVTK to it
-    }
 
     char fname[500];
-
     sprintf(fname,"%s%s%s%s", files.projDir.asCharArray(), "/", files.Ofile.asCharArray(),"-Grid2D.vtu");
 
     writerUGridVTK->SetFileName(fname);
@@ -602,72 +578,6 @@ void  HBSplineFEM::postProcess2D(int vartype, int vardir, int nCol, bool umnxfla
     //tend = time(0);
     //printf("It took %8.4f second(s) \n ", difftime(tend, tstart) );
 
-    //BiharmonicEx1 analy;
-    PoissonEx3  analy;
-
-  if(ndf == 1)
-  {
-    index = 0;
-    for(e=0;e<activeElements.size();e++)
-    {
-           nd1 = elems[activeElements[e]];
-
-           knotBegin = nd1->getKnotBegin();
-           knotEnd   = nd1->getKnotEnd();
-           knotIncr  = nd1->getKnotIncrement();
-
-           fact = (knotEnd[0] - knotBegin[0])/resln[0];
-           create_vector(knotBegin[0], knotEnd[0], fact, uu);
-
-           fact = (knotEnd[1] - knotBegin[1])/resln[1];
-           create_vector(knotBegin[1], knotEnd[1], fact, vv);
-
-           //create the coordinates of the pointsVTK (nodes in FEM)
-
-           count = 0;
-           for(jj=0;jj<vv.size();jj++)
-           {
-              param[1] = vv[jj];
-              for(ii=0;ii<uu.size();ii++)
-              {
-                 param[0] = uu[ii];
-                 GeomData.computeBasisFunctions2D(knotBegin, knotIncr, param, NN);
-
-                 if(nd1->getParent() == NULL)
-                   N = NN;
-                 else
-                   N = nd1->SubDivMat*NN;
-
-                 fact = nd1->computeValue(0, N);
-                 outp2[0].push_back(fact);
-                 //outp3[0].push_back(nd1->computeForce(0, N));
-                 //outp3[0].push_back(fact - analy.computeValue(0, uu[ii], vv[jj]));
-                 //outp3[0].push_back(analy.computeValue(0, uu[ii], vv[jj]));
-                 outp3[0].push_back(0.0);
-
-                 count++;
-              }
-           }
-    }
-
-    for(ii=0;ii<outp2[0].size();ii++)
-      scaVTK->SetTuple1(ii, outp2[0][ii]);
-
-    for(ii=0;ii<outp3[0].size();ii++)
-      scaVTK2->SetTuple1(ii, outp3[0][ii]);
-
-    scaVTK->SetName("value");
-    scaVTK2->SetName("force");
-
-    //assign nodal coordinates and field data to uGridVTK
-    // no need to create lookup table here. All this stuff can be done in Paraview
-
-    uGridVTK->GetPointData()->SetScalars(scaVTK);
-    uGridVTK->GetPointData()->AddArray(scaVTK2);
-    // create a write object and write uGridVTK to it
-  }
-  else // for Stokes and Navier-Stokes
-  {
     index = 0;
     for(e=0;e<activeElements.size();e++)
     {
@@ -737,7 +647,7 @@ void  HBSplineFEM::postProcess2D(int vartype, int vardir, int nCol, bool umnxfla
     //cout << " jjjjjjjjjjjjjjjjjj " << endl;
     vecVTK->SetName("vel");
     //vecVTK2->SetName("grad");
-    vecVTK2->SetName("force");
+    //vecVTK2->SetName("force");
     scaVTK->SetName("pres");
     scaVTK2->SetName("vortz");
 
@@ -753,16 +663,15 @@ void  HBSplineFEM::postProcess2D(int vartype, int vardir, int nCol, bool umnxfla
       scaVTK2->SetTuple1(ii, outp2[3][ii]);
     }
 
-    for(ii=0;ii<outp2[0].size();ii++)
-    {
-      vec2[0] = outp3[0][ii];
-      vec2[1] = outp3[1][ii];
+    //for(ii=0;ii<outp2[0].size();ii++)
+    //{
+      //vec2[0] = outp3[0][ii];
+      //vec2[1] = outp3[1][ii];
       //vec2[2] = outp3[2][ii];
       //vec2[3] = outp3[3][ii];
 
-      vecVTK2->InsertTuple(ii, vec2);
-    }
-    //cout << " jjjjjjjjjjjjjjjjjj " << endl;
+      //vecVTK2->InsertTuple(ii, vec2);
+    //}
 
     //assign nodal coordinates and field data to uGridVTK
     // no need to create lookup table here. All this stuff can be done in Paraview
@@ -771,12 +680,9 @@ void  HBSplineFEM::postProcess2D(int vartype, int vardir, int nCol, bool umnxfla
     uGridVTK->GetPointData()->SetVectors(vecVTK);
     //uGridVTK->GetPointData()->AddArray(vecVTK2);
     uGridVTK->GetPointData()->AddArray(scaVTK2);
-  }
 
 
     char fname[500];
-
-    //sprintf(fname,"%s%06d%s", "BSpline-",filecount, ".vtu");
     sprintf(fname,"%s%s%s%s%06d%s", files.projDir.asCharArray(), "/", files.Ofile.asCharArray(),"-",filecount, ".vtu");
 
     writerUGridVTK->SetFileName(fname);
@@ -902,28 +808,6 @@ void  HBSplineFEM::createPostProcessGrid3D(int vartype, int vardir, int nCol, bo
 
     count = xx.size();
 
-    if(ndf == 1)
-    {
-      scaVTK->SetName("value");
-      scaVTK->SetNumberOfTuples(count);
-
-      scaVTK2->SetName("force");
-      scaVTK2->SetNumberOfTuples(count);
-
-      for(ii=0;ii<count;ii++)
-      {
-        scaVTK->SetTuple1(ii, 0.0);
-        scaVTK2->SetTuple1(ii, 0.0);
-      }
-
-      //assign nodal coordinates and field data to uGridVTK
-      // no need to create lookup table here. All this stuff can be done in Paraview
-
-      uGridVTK->SetPoints(pointsVTK);
-      uGridVTK->GetPointData()->SetScalars(scaVTK);
-    }
-    else // for Stokes and Navier-Stokes
-    {
        vecVTK->SetName("vel");
        vecVTK2->SetName("vortz");
        scaVTK->SetName("pres");
@@ -955,10 +839,8 @@ void  HBSplineFEM::createPostProcessGrid3D(int vartype, int vardir, int nCol, bo
        uGridVTK->GetPointData()->AddArray(vecVTK2);
        //uGridVTK->GetPointData()->AddArray(scaVTK2);
        // create a write object and write uGridVTK to it
-    }
 
     char fname[500];
-
     sprintf(fname,"%s%s%s%s", files.projDir.asCharArray(), "/", files.Ofile.asCharArray(),"-Grid2D.vtu");
 
     writerUGridVTK->SetFileName(fname);
@@ -995,78 +877,6 @@ void  HBSplineFEM::postProcess3D(int vartype, int vardir, int nCol, bool umnxfla
     outp2.resize(ndf+2);
     outp3.resize(ndf+2);
 
-  if(ndf == 1)
-  {
-    index = 0;
-    for(e=0;e<activeElements.size();e++)
-    {
-           nd1 = elems[activeElements[e]];
-
-           knotBegin = nd1->getKnotBegin();
-           knotEnd   = nd1->getKnotEnd();
-           knotIncr  = nd1->getKnotIncrement();
-
-           fact = (knotEnd[0] - knotBegin[0])/resln[0];
-           create_vector(knotBegin[0], knotEnd[0], fact, uu);
-
-           fact = (knotEnd[1] - knotBegin[1])/resln[1];
-           create_vector(knotBegin[1], knotEnd[1], fact, vv);
-
-           fact = (knotEnd[2] - knotBegin[2])/resln[2];
-           create_vector(knotBegin[2], knotEnd[2], fact, ww);
-
-           //cout << uu << endl;
-           //cout << vv << endl;
-           //cout << ww << endl;
-
-           //create the coordinates of the pointsVTK (nodes in FEM)
-
-           for(kk=0;kk<ww.size();kk++)
-           {
-             param[2] = ww[kk];
-             for(jj=0;jj<vv.size();jj++)
-             {
-               param[1] = vv[jj];
-               for(ii=0;ii<uu.size();ii++)
-               {
-                 param[0] = uu[ii];
-                 GeomData.computeBasisFunctions3D(knotBegin, knotIncr, param, NN);
-
-                 if(nd1->getParent() == NULL)
-                   N = NN;
-                 else
-                   N = nd1->SubDivMat*NN;
-
-                 //printVector(N);
-                 //cout << kk << '\t' << jj << '\t' <<  ii << endl;
-                 //cout << nd1->computeValue(0, N) << endl;
-                 outp2[0].push_back(nd1->computeValue(0, N));
-                 //outp3[0].push_back(nd1->computeForce(0, N));
-                 outp3[0].push_back(0.0);
-                 //cout << " aaaaaaaaaaa " << endl;
-               }
-             }
-           }
-    }
-
-    for(ii=0;ii<outp2[0].size();ii++)
-      scaVTK->SetTuple1(ii, outp2[0][ii]);
-
-    for(ii=0;ii<outp3[0].size();ii++)
-      scaVTK2->SetTuple1(ii, outp3[0][ii]);
-
-    scaVTK->SetName("value");
-    scaVTK2->SetName("force");
-
-    //assign nodal coordinates and field data to uGridVTK
-    // no need to create lookup table here. All this stuff can be done in Paraview
-
-    uGridVTK->GetPointData()->SetScalars(scaVTK);
-    //uGridVTK->GetPointData()->AddArray(scaVTK2);
-    // create a write object and write uGridVTK to it
-  }
-  else // for Stokes and Navier-Stokes
-  {
     index = 0;
     for(e=0;e<activeElements.size();e++)
     {
@@ -1167,14 +977,8 @@ void  HBSplineFEM::postProcess3D(int vartype, int vardir, int nCol, bool umnxfla
     uGridVTK->GetPointData()->SetVectors(vecVTK);
     uGridVTK->GetPointData()->AddArray(vecVTK2);
     //uGridVTK->GetPointData()->AddArray(scaVTK2);
-  }
-
-    //if(tis > 10)
-      //FluidSolnData.soln = rhsVec;
 
     char fname[500];
-
-    //sprintf(fname,"%s%06d%s", "BSpline-",filecount, ".vtu");
     sprintf(fname,"%s%s%s%s%06d%s", files.projDir.asCharArray(), "/", files.Ofile.asCharArray(),"-",filecount, ".vtu");
 
     writerUGridVTK->SetFileName(fname);

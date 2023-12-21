@@ -66,7 +66,7 @@ class ImmersedRigidSolid : public ImmersedSolid
 
         virtual int  factoriseSolveAndUpdate();
 
-        virtual void  solveTimeStep();
+        virtual int  solveTimeStep();
 
         virtual void  writeOutput();
 

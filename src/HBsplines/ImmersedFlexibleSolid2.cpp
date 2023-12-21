@@ -6,6 +6,8 @@
 #include "ImmersedIntegrationElement.h"
 #include "SolverPetsc.h"
 #include "QuadratureUtil.h"
+#include "BasisFunctionsLagrange.h"
+#include "GeomDataLagrange.h"
 
 
 extern MpapTime mpapTime;
@@ -92,12 +94,12 @@ void ImmersedFlexibleSolid::setSolver(int slv, int *parm, bool cIO)
 
 void ImmersedFlexibleSolid::prepareMatrixPattern()
 {
-    //printf("\n     ImmersedFlexibleSolid::prepareMatrixPattern()  .... STARTED ...\n");
+    printf("\n     ImmersedFlexibleSolid::prepareMatrixPattern()  .... STARTED ...\n");
 
     int  r=0, c=0, r1=0, c1=0, count=0, count1=0, count2=0;
     int  ii=0, jj=0, iii=0, e=0, ee=0, ind=0, val1=0, val2=0;
-    int  *tt, *tt1, *tt2, n1=0, n2=0, kk=0, e1=0, a=0, b=0, ll=0, pp=0, nnz=0;
-    int  nRow=0, nCol=0, ind1=0, ind2=0, ndof_temp1=0;
+    int  *tt, *tt1, *tt2, n1=0, n2=0, kk=0, e1=0, a=0, b=0, ll=0, pp=0, nnz=0, nn;
+    int  nRow=0, nCol=0, ind1=0, ind2=0, ndof_temp1=0, npElem, dof, dim, row, col;
 
     ndof = elems[0]->getNdofPerNode();
     ndof_temp1 = ndof;
@@ -270,8 +272,8 @@ void ImmersedFlexibleSolid::prepareMatrixPattern()
       elems[ee]->forAssyVec = LM[ee];
     }
 
-    pp=false;
-    //pp=true;
+    //pp=false;
+    pp=true;
     if(pp)
     {
        printf("   IEN array \n\n");
@@ -390,27 +392,110 @@ void ImmersedFlexibleSolid::prepareMatrixPattern()
 
     solver->currentStatus = PATTERN_OK;
 
+    cout << " STAGGERED = " << STAGGERED << endl;
+
+
     if(!STAGGERED)
     {
-      forAssyCoupledHorz.resize(nNode*ndof_temp1);
+      forAssyCoupledHorz.resize(totalDOF);
       forAssyCoupledVert.resize(nNode*DIM);
+      
+      vector<int>  nodeNums, pointNums;
+      vector<int>  forAssyVec, posIndices;
 
-      for(ii=0;ii<nNode;ii++)
+      for(ee=0; ee<nElem; ee++)
       {
-        ind1 = ii*ndof_temp1;
-        ind2 = ii*DIM;
+        nodeNums  = elems[ee]->nodeNums;
+        //pointNums = ImmIntgElems[ee]->pointNums;
 
-        for(jj=0;jj<DIM;jj++)
+        forAssyVec  = elems[ee]->forAssyVec;
+        //posIndices = ImmIntgElems[ee]->posIndices;
+
+        printVector(nodeNums);
+        printVector(forAssyVec);
+        //printVector(posIndices);
+        
+        int size1 = forAssyVec.size();
+        int nlbS  = nodeNums.size();
+
+        for(ii=0; ii<size1; ii++)
         {
-          forAssyCoupledHorz[ind1+jj].push_back(ind2+jj);
-          //forAssyCoupledVert[ind2+jj].push_back(ind1+jj);
+          row = forAssyVec[ii];
+
+          if(row > -1)
+          {
+              for(jj=0; jj<nlbS; jj++)
+              {
+                ind2 = nodeNums[jj]*DIM;
+                //cout << ii << '\t' << row << '\t' << jj << '\t' << ind2 << endl;
+
+                forAssyCoupledHorz[row].push_back(ind2);
+                forAssyCoupledHorz[row].push_back(ind2+1);
+
+                forAssyCoupledVert[ind2].push_back(row);
+                forAssyCoupledVert[ind2+1].push_back(row);
+              }
+          }
         }
       }
-      //for(ii=0;ii<totalDOF;ii++)
-        //printVector(forAssyCoupledHorz[ii]);
+      //cout << " forAssyCoupledHorz ...... " << endl;      cout << endl;
+      for(ii=0;ii<totalDOF;ii++)
+      {
+        findUnique(forAssyCoupledHorz[ii]);
+        printVector(forAssyCoupledHorz[ii]);
+      }
     }
 
-    //printf("\n     ImmersedFlexibleSolid::prepareMatrixPattern()  .... FINISHED ...\n\n");
+/*
+    if(!STAGGERED)
+    {
+      forAssyCoupledHorz.resize(totalDOF);
+      forAssyCoupledVert.resize(nNode*DIM);
+      
+      vector<int>  nodeNums, pointNums;
+      vector<int>  forAssyVec, posIndices;
+
+      for(ee=0; ee<nElem; ee++)
+      {
+        nodeNums  = elems[ee]->nodeNums;
+        pointNums = ImmIntgElems[ee]->pointNums;
+
+        forAssyVec  = elems[ee]->forAssyVec;
+        posIndices = ImmIntgElems[ee]->posIndices;
+        
+        printVector(forAssyVec);
+        printVector(posIndices);
+        
+        int nlbS = forAssyVec.size();
+        int nlbL = posIndices.size();
+
+        for(ii=0; ii<nlbS; ii++)
+        {
+          row = forAssyVec[ii];
+
+          if(row > -1)
+          {
+              for(jj=0; jj<nlbL; jj++)
+              {
+                //cout << ii << '\t' << row << '\t' << jj << '\t' << ind2 << endl;
+
+                forAssyCoupledHorz[row].push_back(posIndices[jj]);
+
+                forAssyCoupledVert[posIndices[jj]].push_back(row);
+              }
+          }
+        }
+      }
+      //cout << " forAssyCoupledHorz ...... " << endl;      cout << endl;
+      for(ii=0;ii<totalDOF;ii++)
+      {
+        findUnique(forAssyCoupledHorz[ii]);
+        printVector(forAssyCoupledHorz[ii]);
+      }
+    }
+*/
+
+    printf("\n     ImmersedFlexibleSolid::prepareMatrixPattern()  .... FINISHED ...\n\n");
 
     return;
 }
@@ -418,32 +503,35 @@ void ImmersedFlexibleSolid::prepareMatrixPattern()
 
 
 
-void ImmersedFlexibleSolid::solveTimeStep()
+int ImmersedFlexibleSolid::solveTimeStep()
 {
     printf("\n Solving Immersed Flexible Solid \n");
-    //printf("\n External force norm = %12.6E \n", forceCur.norm());
+    
+    bool CONVERGED = false;
 
-    int  ii=0, ee=0;
-
-    //printVector(SolnData.forceCur);
-
-    for(ii=0;ii<10;ii++)
+    for(int iter=1; iter<=10;iter++)
     {
+      updateIterStep();
+
       calcStiffnessAndResidual(1, 1, 1);
 
-      printf("\t ImmersedFlexibleSolid:   %5d \t %12.6E \n", ii, rNorm);
+      printf("\t ImmersedFlexibleSolid:   %5d \t %12.6E \n", iter, rNorm);
 
       if(converged())
+      {
+        CONVERGED = true;
         break;
+      }
 
       factoriseSolveAndUpdate();
-
-      updateIterStep();
     }
 
     printf("\n Solving Immersed Flexible Solid ..... DONE  \n\n");
 
-    return;
+    if(CONVERGED)
+      return 0;
+    else
+      return 1;
 }
 
 
@@ -453,7 +541,7 @@ void ImmersedFlexibleSolid::solveTimeStep()
 
 int ImmersedFlexibleSolid::calcStiffnessAndResidual(int printRes, bool zeroMtx, bool zeroRes)
 {
-    //cout << "     ImmersedFlexibleSolid: generating coefficient Matrices ...\n\n";
+    cout << "     ImmersedFlexibleSolid::calcStiffnessAndResidual ..." << endl;
 
     if(solver == NULL)
     {
@@ -475,13 +563,6 @@ int ImmersedFlexibleSolid::calcStiffnessAndResidual(int printRes, bool zeroMtx, 
 
       elems[ee]->calcStiffnessAndResidual(Klocal, Flocal, firstIter);
 
-      //cout << " MMMMMMMMMMM " << endl;
-      //elems[ee]->assembleElementMatrixAndVector(0, solver->mtx, &(solver->rhsVec(0)));
-
-      //elems[ee]->assembleElementMatrix(0, solver->mtx);
-      //cout << " MMMMMMMMMMM " << endl;
-      //elems[ee]->assembleElementVector(false, false, &(solver->rhsVec(0)), &(SolnData.reac(0)), 0, 0);
-
       solver->assembleMatrixAndVector(0, 0, elems[ee]->forAssyVec, Klocal, Flocal);
     }
 
@@ -498,14 +579,10 @@ int ImmersedFlexibleSolid::calcStiffnessAndResidual(int printRes, bool zeroMtx, 
 
     //cout << " rhsVec " << endl;        printVector(&(rhsVec[0]), totalDOF);
 
-    //printf("\n rhsVec norm = %12.6E \n", solver->rhsVec.norm());
-
     firstIter = false;
     SolnData.firstIter = firstIter;
     rNormPrev = rNorm;
     rNorm     = solver->rhsVec.norm();
-
-    //printf(" ImmersedFlexibleSolid:  %11.4e \n", rNorm);
 
     solver->currentStatus = ASSEMBLY_OK;
 
@@ -574,12 +651,12 @@ int ImmersedFlexibleSolid::applyBoundaryConditions(int start1, int start2, Spars
       specVal = DirichletBCs[aa][2];
 
       ind = nn*ndof+dof;
-      //specVal  -=  SolnData.var1DotCur[ind];
-      specVal  -=  SolnData.var1Cur[ind];
+      specVal  -=  SolnData.var1DotCur[ind];
+      //specVal  -=  SolnData.var1Cur[ind];
 
-      //cout << start << '\t' << nn << '\t' << ind << '\t' << specVal << endl;
+      //cout << start1 << '\t' << nn << '\t' << ind << '\t' << specVal << endl;
 
-      ind += start1;
+      ind += start2;
       globalK.coeffRef(ind, ind) += af*PENALTY;
       rhs[ind]   += (PENALTY*specVal);
     }
@@ -599,75 +676,102 @@ int  ImmersedFlexibleSolid::applyExternalForces()
       //solver->rhsVec[ii] += fluidAcceCur[assy4r[ii]];
     }
 
-  /*
-  ///////////////////
-  // stiffness contribution from PENALTY
-
-  double  dvol, detJ, fact, dt=mpapTime.dt;
-  double  velFact = SolnData.td[6];
-
-  int  nlb = ImmIntgElems[0]->pointNums.size();
-
-  int  nGauss = 5;
-
-  VectorXd  Nb;    Nb.resize(nlb);
-  myPoint  geom, param;
-
-  vector<double>  gausspoints, gaussweights;
-
-  getGaussPoints1D(nGauss, gausspoints, gaussweights);
-
-  int  aa, ii, jj, ind, dd, gp;
-
-    ImmersedIntegrationElement  *lme;
-    myPoly*  poly;
-
-
-    for(aa=0; aa<nImmInt; aa++)
-    {
-      lme  = ImmIntgElems[aa];
-      poly = ImmersedFaces[aa];
-
-      //cout << " aa = " << aa << '\t' << lme->isActive() << endl;
-      //if( lme->isActive() )
-      //{
-          for(gp=0; gp<nGauss; gp++)
-          {
-              param[0] = gausspoints[gp];
-
-              poly->computeBasisFunctions(param, geom, Nb, detJ);
-
-              dvol  = gaussweights[gp] * detJ;
-
-              //printf(" %12.6f,  %12.6f, %12.6f \n", Nb[0], Nb[1], dvol);
-
-              dvol *= PENALTY;
-              for(ii=0; ii<nlb; ii++)
-              {
-                ind = ImmIntgElems[aa]->pointNums[ii]*2;
-
-                for(dd=0; dd<2; dd++)
-                {
-                  solver->rhsVec[ind+dd]  +=  (SolnData.var1DotPrev[ind+dd]-SolnData.var1DotCur[ind+dd])*dvol;
-                  solver->mtx.coeffRef(ind+dd, ind+dd) += velFact*dvol;
-                }
-              }
-          }
-      //}
-    }
-    */
-
-  return 0;
+    return 0;
 }
 
 
 
-void ImmersedFlexibleSolid::calcForceVector()
+void ImmersedFlexibleSolid::calcForceVector(double* rhs)
 {
-    //for(int ee=0;ee<nElem;ee++)
-      //elems[ee]->calcExternalForces();
-
     return;
+}
+
+
+
+
+void ImmersedFlexibleSolid::calcForceVectorMonolithic(double* rhs)
+{
+  int  ee, gp, ii, jj, TI, TIp1, TIp2, TJ, TJp1;
+
+  int  nlbS = ImmIntgElems[0]->pointNums.size();
+  int  nlbL = elems[0]->nodeNums.size();
+
+  vector<double>  NL(nlbL), dN(nlbL), dN_dx(nlbL), xNode(nlbL), yNode(nlbL), NS(nlbS);
+  double  dvol, detJ, dvol1, dvol2, fact1, fact2, xc;
+
+  vector<int>  nodeNums, pointNums;
+
+  VectorXd  rhsTemp(nNode*ndof);
+  rhsTemp.setZero();
+
+  bool axsy = false;//(GeomDataHBS->FluidProps[2] == 1);
+
+  int nGP=2;
+  vector<double>  gausspoints(nGP), gaussweights(nGP);
+  getGaussPoints1D(nGP, gausspoints, gaussweights);
+
+
+  for(ee=0; ee<nElem; ee++)
+  {
+      nodeNums = elems[ee]->nodeNums;
+      pointNums = ImmIntgElems[ee]->pointNums;
+      
+      for(ii=0;ii<nlbL;ii++)
+      {
+        xNode[ii] = GeomData.NodePosCur[nodeNums[ii]][0];
+        yNode[ii] = GeomData.NodePosCur[nodeNums[ii]][1];
+      }
+
+      for(gp=0;gp<gausspoints.size();gp++)
+      {
+        computeLagrangeBFsLine2D(nlbL-1, gausspoints[gp], &xNode[0], &yNode[0], &NL[0], &dN[0], detJ);
+
+        //cout << " detJ " << detJ << '\t' << gaussweights[gp] << endl;
+
+        dvol  = gaussweights[gp] * detJ;
+
+        xc = 0.0;
+        for(ii=0;ii<nlbL;ii++)
+          xc += NL[ii] * xNode[ii];
+
+        if(axsy)
+          dvol1 = dvol * 2.0*PI*xc;
+
+
+        if(nlbS == nlbL)
+        {
+          for(ii=0; ii<nlbL; ii++)
+            NS[ii] = NL[ii];
+        }
+        else
+        {
+          NS[0] = 1.0;
+        }
+
+        for(ii=0; ii<nlbS; ii++)
+        {
+          fact1 = NS[ii]*dvol1;
+          fact2 = NS[ii]*dvol2;
+
+          TI   = ii*3;
+          TIp1 = TI+1;
+          TIp2 = TI+2;
+        }
+
+        for(ii=0; ii<nlbL; ii++)
+        {
+          fact1 = NS[ii]*dvol1;
+          fact2 = NS[ii]*dvol2;
+
+          TI   = ii*3;
+          TIp1 = TI+1;
+          TIp2 = TI+2;
+
+        }
+    }
+  }
+
+  return;
 }
 
 
@@ -675,6 +779,7 @@ void ImmersedFlexibleSolid::calcForceVector()
 
 int ImmersedFlexibleSolid::factoriseSolveAndUpdate()
 {
+    cout << " ImmersedFlexibleSolid::factoriseSolveAndUpdate ... " << endl;
     //cout << " residue_new " << endl;        printVector(&(solver->rhsVec[0]), totalDOF);
 
     solver->factoriseAndSolve();
@@ -685,7 +790,6 @@ int ImmersedFlexibleSolid::factoriseSolveAndUpdate()
       soln[assy4r[kk]] = solver->soln[kk];
 
     SolnData.var1 += soln;
-    //SolnData.var1Dot += soln;
 
     //printVector(SolnData.var1);
 
@@ -693,13 +797,11 @@ int ImmersedFlexibleSolid::factoriseSolveAndUpdate()
 
     //cout << " result " << endl;        printVector(&(SolnData.var1[0]), totalDOF);
 
-    //ctimFactSolvUpdt += computerTime.stop(fct);
-
     return 0;
 }
 
 
-
+/*
 void ImmersedFlexibleSolid::calcCouplingMatrices()
 {
     //////////////////////////////////////////
@@ -743,20 +845,26 @@ void ImmersedFlexibleSolid::calcCouplingMatrices()
         {
           TJ   = ImmIntgElems[aa]->pointNums[jj] * DIM;
           TJp1 = TJ+1;
-          
+
           ind2 = jj*DIM;
 
-          Khorz(TI, TJ)      +=  Ktemp(ind1, ind2);
-          Khorz(TI, TJ+1)    +=  Ktemp(ind1, ind2+1);
+          Khorz(TI,   TJ)    +=  Ktemp(ind1,   ind2);
+          Khorz(TI,   TJp1)  +=  Ktemp(ind1,   ind2+1);
 
-          Khorz(TI+1, TJ)    +=  Ktemp(ind1+1, ind2);
-          Khorz(TI+1, TJ+1)  +=  Ktemp(ind1+1, ind2+1);
+          Khorz(TIp1, TJ)    +=  Ktemp(ind1+1, ind2);
+          Khorz(TIp1, TJp1)  +=  Ktemp(ind1+1, ind2+1);
 
-          Kvert(TJ,   TI)    +=  Ktemp2(ind2, ind1);
-          Kvert(TJ+1, TI)    +=  Ktemp2(ind2+1, ind1);
+          Khorz(TIp2, TJ)    +=  Ktemp(ind1+2, ind2);
+          Khorz(TIp2, TJp1)  +=  Ktemp(ind1+2, ind2+1);
 
-          Kvert(TJ,   TI+1)  +=  Ktemp2(ind2, ind1+1);
-          Kvert(TJ+1, TI+1)  +=  Ktemp2(ind2+1, ind1+1);
+          Kvert(TJ,   TI)    +=  Ktemp2(ind2,   ind1);
+          Kvert(TJp1, TI)    +=  Ktemp2(ind2+1, ind1);
+
+          Kvert(TJ,   TIp1)  +=  Ktemp2(ind2,   ind1+1);
+          Kvert(TJp1, TIp1)  +=  Ktemp2(ind2+1, ind1+1);
+
+          Kvert(TJ,   TIp2)  +=  Ktemp2(ind2,   ind1+2);
+          Kvert(TJp1, TIp2)  +=  Ktemp2(ind2+1, ind1+2);
         }
       }
     }
@@ -764,7 +872,117 @@ void ImmersedFlexibleSolid::calcCouplingMatrices()
     Khorz *= -SolnData.td[2];
     Kvert *= -SolnData.td[2];
 
-  //printMatrix(Khorz);
+    //printMatrix(Khorz);
+    //printMatrix(Kvert);
+}
+*/
+
+
+
+
+
+void ImmersedFlexibleSolid::calcCouplingMatrices()
+{
+    //////////////////////////////////////////
+    // off-diagonal matrices
+    //////////////////////////////////////////
+
+    int  ee=0, ii=0, jj=0, kk=0, nlbS=0, nlbL=0;
+    int  TI=0, TIp1=0, TIp2=0, TJ=0, TJp1=0;
+    MatrixXd  Ktemp(6,4), Ktemp2(4,6);
+    Ktemp.setZero();
+    Ktemp2.setZero();
+
+    int  ind1 = nNode*ndof;
+    int  ind2 = nNode*DIM;
+
+    Khorz.resize(ind1, ind2);
+    Khorz.setZero();
+
+    Kvert.resize(ind2, ind1);
+    Kvert.setZero();
+    
+    vector<int>  nodeNums;
+    
+    double  xNode[2], yNode[2], he, fact1, fact2;
+
+    nlbL = ImmIntgElems[0]->pointNums.size();
+
+    for(ee=0; ee<nElem; ee++)
+    {
+      nodeNums = elems[ee]->nodeNums;
+
+      nlbS = nodeNums.size();
+
+      xNode[0] = GeomData.NodePosCur[nodeNums[0]][0];
+      yNode[0] = GeomData.NodePosCur[nodeNums[0]][1];
+      xNode[1] = GeomData.NodePosCur[nodeNums[1]][0];
+      yNode[1] = GeomData.NodePosCur[nodeNums[1]][1];
+
+      he = sqrt( (xNode[1]-xNode[0])*(xNode[1]-xNode[0]) + (yNode[1]-yNode[0])*(yNode[1]-yNode[0]));
+
+      ImmIntgElems[ee]->computeKhorzKvertFlexible(0, 0, Ktemp, Ktemp2);
+
+      //printMatrix(Ktemp);
+      //printf("\n\n");
+      
+      fact1 = he/3.0;
+      fact2 = he/6.0;
+
+      //Ktemp(0,0) = fact1;      Ktemp(0,2) = fact2;
+      //Ktemp(1,1) = fact1;      Ktemp(1,3) = fact2;
+
+      //Ktemp(3,0) = fact2;      Ktemp(3,2) = fact1;
+      //Ktemp(4,1) = fact2;      Ktemp(4,3) = fact1;
+
+      //printMatrix(Ktemp);
+      //printf("\n\n");
+      //printMatrix(Ktemp2);
+      //printf("\n\n");
+
+      for(ii=0; ii<nlbS; ii++)
+      {
+        TI   = 3*nodeNums[ii];
+        TIp1 = TI+1;
+        TIp2 = TI+2;
+        
+        ind1 = 3*ii;
+
+        for(jj=0; jj<nlbL; jj++)
+        {
+          //TJ   = ImmIntgElems[ee]->pointNums[jj] * DIM;
+          TJ   = nodeNums[jj] * DIM;
+          TJp1 = TJ+1;
+
+          ind2 = jj*DIM;
+
+          Khorz(TI,   TJ)    +=  Ktemp(ind1,   ind2);
+          Khorz(TI,   TJp1)  +=  Ktemp(ind1,   ind2+1);
+
+          Khorz(TIp1, TJ)    +=  Ktemp(ind1+1, ind2);
+          Khorz(TIp1, TJp1)  +=  Ktemp(ind1+1, ind2+1);
+
+          Khorz(TIp2, TJ)    +=  Ktemp(ind1+2, ind2);
+          Khorz(TIp2, TJp1)  +=  Ktemp(ind1+2, ind2+1);
+
+          //Kvert(TJ,   TI)    +=  Ktemp2(ind2,   ind1);
+          //Kvert(TJp1, TI)    +=  Ktemp2(ind2+1, ind1);
+
+          //Kvert(TJ,   TIp1)  +=  Ktemp2(ind2,   ind1+1);
+          //Kvert(TJp1, TIp1)  +=  Ktemp2(ind2+1, ind1+1);
+
+          //Kvert(TJ,   TIp2)  +=  Ktemp2(ind2,   ind1+2);
+          //Kvert(TJp1, TIp2)  +=  Ktemp2(ind2+1, ind1+2);
+        }
+      }
+    }
+
+    Khorz *= -SolnData.td[2];
+
+    Kvert = Khorz.transpose();
+
+    //printMatrix(Khorz);
+    //printMatrix(Kvert);
 }
 
 
@@ -774,49 +992,71 @@ void ImmersedFlexibleSolid::calcCouplingMatrices()
 int ImmersedFlexibleSolid::assembleGlobalMatrixAndVector(int start1, int start2, SparseMatrixXd& mtx, double* rhs)
 {
     if(totalDOF <= 0)
-      return 1;
+      return 0;
 
-    int ee=0, ii=0, jj=0, k1=0, k2=0, r=0, c=0;
+    int ee=0, ii=0, jj=0, k1=0, k2=0, r=0, c=0, aa, bb;
+
+    vector<int> forAssyVec;
+    MatrixXd  Klocal;
+    VectorXd  Flocal;
 
     for(ee=0;ee<nElem;ee++)  // loop over all the elements
     {
       //cout << "       elem... : " << (ee+1) << endl;
 
-      //elems[ee]->resetMatrixAndVector();
-
-      //elems[ee]->calcStiffnessAndResidual();
+      elems[ee]->calcStiffnessAndResidual(Klocal, Flocal, false);
+      //printMatrix(Klocal);
+      //printVector(Flocal);
 
       //cout << " MMMMMMMMMMM " << endl;
-      elems[ee]->assembleElementMatrixAndVector(start2, mtx, rhs);
+      //elems[ee]->assembleElementMatrixAndVector(start2, mtx, rhs);
+      
+      forAssyVec = elems[ee]->forAssyVec;
+      //printVector(forAssyVec);
+
+      for(ii=0;ii<nsize;ii++)
+      {
+        aa = forAssyVec[ii];
+        if( aa != -1 )
+        {
+          r = start2 + aa;
+          rhs[r] += Flocal(ii);
+          for(jj=0;jj<nsize;jj++)
+          {
+            bb = forAssyVec[jj];
+            if( bb != -1 )
+              mtx.coeffRef(r, start2+bb) += Klocal(ii,jj);
+          }
+        }
+      }
     }
 
     //cout << " aaaaaaaaaaaaaaa " << endl;
-    for(ii=0;ii<totalDOF;ii++)
-      rhs[start2+ii] += SolnData.forceCur[assy4r[ii]];
+    //printVector(SolnData.forceCur);
 
-    applyBoundaryConditions(start1, start2, mtx, rhs);
-  
-    //calcCouplingMatrices();
+    updateForce();
 
-//
-    double af = SolnData.td[2];
+    SolnData.force = SolnData.forceTemp;
+    SolnData.forceCur = SolnData.td[2]*SolnData.force + (1.0-SolnData.td[2])*SolnData.forcePrev;
+
+    //printVector(SolnData.forceTemp);
 
     for(ii=0;ii<totalDOF;ii++)
     {
-      r  = start2 + ii;
-      k1 = assy4r[ii];
-
-      for(jj=0;jj<forAssyCoupledHorz[ii].size();jj++)
-      {
-        c = start1 + forAssyCoupledHorz[ii][jj];
-
-        mtx.coeffRef(r, c) += -af;
-        mtx.coeffRef(c, r) += -af;
-      }
+      //rhs[start2+ii] += SolnData.forceTemp[assy4r[ii]];
+      rhs[start2+ii] += SolnData.forceCur[assy4r[ii]];
     }
-//
 
-/*
+    //cout << " applyBoundaryConditions " << endl;
+    //applyBoundaryConditions(start1, start2, mtx, rhs);
+
+
+    //cout << " calcCouplingMatrices " << endl;
+    calcCouplingMatrices();
+    //cout << " calcCouplingMatrices " << endl;
+    //printMatrix(Khorz);
+
+
     for(ii=0;ii<totalDOF;ii++)
     {
       r  = start2 + ii;
@@ -828,29 +1068,14 @@ int ImmersedFlexibleSolid::assembleGlobalMatrixAndVector(int start1, int start2,
         c = start1 + k2;
 
         mtx.coeffRef(r, c) += Khorz(k1, k2);
-        mtx.coeffRef(c, r) += Kvert(k2, k1);
+        mtx.coeffRef(c, r) += Khorz(k1, k2);
       }
     }
-*/
 
-  return 0;
+    return 0;
 }
 
 
-/*
-int ImmersedFlexibleSolid::AppendSolidMatrixPatternCutFEM(int start1, int start2, vector<vector<int> >& forAssyGlobal)
-{
-  for(ii=0; ii<forAssyMat.size(); ii++)
-  {
-    for(jj=0; jj<forAssyMat[ii].size(); jj++)
-    {
-      forAssyGlobal[ii].push_back(forAssyMat[ii][jj]);
-    }
-  }
-
-  return 0;
-}
-*/
 
 
 int ImmersedFlexibleSolid::assembleGlobalMatrixAndVectorCutFEM(int start1, int start2, SolverPetsc* solverTemp)

@@ -89,6 +89,9 @@ void SolutionData::initialise(int s1, int s2, int s3, int s4)
 
     var1Extrap     = var1;
 
+    var1PrevIteration  = var1;
+    var1PrevIteration2 = var1;
+
     var1Dot     = var1;
     var1DotPrev = var1;
     var1DotCur  = var1;
@@ -118,6 +121,9 @@ void SolutionData::initialise(int s1, int s2, int s3, int s4)
     forceTemp     = var1;
     forceTempPrev = var1;
     rhsVec        = var1;
+    
+    forcePrevIteration  = var1;
+    forcePrevIteration2 = var1;
 
     reac =  var1;
 
@@ -187,16 +193,24 @@ void  SolutionData::setTimeParam()
 
 void  SolutionData::timeUpdate()
 {
-  // store the variables 
+
+  return;
+}
+
+
+
+void  SolutionData::storeVariables()
+{
+  // store the variables
 
   var1Prev4 = var1Prev3;
   var1Prev3 = var1Prev2;
   var1Prev2 = var1Prev;
+  var1Prev  = var1;
 
-  var1Prev = var1;
-  var2Prev = var2;
-  var3Prev = var3;
-  var4Prev = var4;
+  var2Prev  = var2;
+  var3Prev  = var3;
+  var4Prev  = var4;
 
   //var1Extrap = var1Prev;
   //var1Extrap = 2.0*var1Prev - var1Prev2;
@@ -215,65 +229,10 @@ void  SolutionData::timeUpdate()
 
   // initialise the variables
 
-  //if(!PHYSICS_TYPE)
-  //{
-    //var1.setZero();
-    //var2.setZero();
-    //var3.setZero();
-    //var4.setZero();
-  //}
-
-  if(STAGGERED)
-  {
-    double  q1, q2, q3, q4, fact;
-    double  knp1 = mpapTime.dt/mpapTime.dtPrev;
-
-    int  predType = (int) stagParams[1];
-
-    double  beta = stagParams[2];
-    //double  z = (1.0+beta+beta*rho-2.0*sqrt(beta+beta*rho))/(1.0-beta);
-    double  z=0.5;
-
-    switch(predType)
-    {
-      case 1:
-        q1 =  1.0;  q2 = 0.0;  q3 =  0.0;  q4 =  0.0;
-        break;
-
-      case 2:
-        q1 =  2.0;  q2 = -1.0;  q3 =  0.0;  q4 =  0.0;
-        //q1 =  1.5;  q2 = -0.5;  q3 =  0.0;  q4 =  0.0;
-        //q1 =  4.0/3.0;  q2 = -1.0/3.0;  q3 =  0.0;  q4 =  0.0;
-        //q1 = 1.0+knp1; q2 = -knp1;  q3 =  0.0;  q4 =  0.0;
-        //q1 = 1.0+z; q2 = -z;  q3 =  0.0;  q4 =  0.0;
-        break;
-
-      case 3:
-        //q1 =  3.0;  q2 = -3.0;  q3 =  1.0;  q4 =  0.0;
-        q1 =  2.0+z;  q2 = -1.0-2.0*z;  q3 =  z;  q4 =  0.0;
-        //q1 =  2.5;  q2 = -2.0;  q3 =  0.5;  q4 =  0.0;
-        break;
-
-      case 4:
-        q1 =  4.0;  q2 = -6.0;  q3 =  4.0;  q4 = -1.0;
-        //q1 =  104.0/35.0;  q2 = -114.0/35.0;  q3 =  56.0/35.0;  q4 = -11.0/35.0;
-        break;
-
-      default:
-        cout << " unknown value for 'predType' " << endl;
-        break;
-    }
-
-    forcePred = q1*force + q2*forcePrev + q3*forcePrev2 + q4*forcePrev3;
-
-    forceCur  = td[2]*forcePred + (1.0-td[2])*force;
-  }
-
-  //forcePrev5 = forcePrev4;
-  //forcePrev4 = forcePrev3;
-  //forcePrev3 = forcePrev2;
-  //forcePrev2 = forcePrev;
-  //forcePrev  = force;
+  forcePrev4 = forcePrev3;
+  forcePrev3 = forcePrev2;
+  forcePrev2 = forcePrev;
+  forcePrev  = force;
 
   return;
 }
@@ -330,7 +289,6 @@ void SolutionData::updateIterStep()
     if(STAGGERED)
     {
       // displacement as the primary variable
-      //cout << "  SOLID SOLID SOLID " << endl;
 
       var1Dot     = td[10]*var1 + td[11]*var1Prev + td[12]*var1DotPrev + td[13]*var1DotDotPrev + td[14]*dDotPrev;
       var1DotDot  = td[15]*var1 + td[16]*var1Prev + td[17]*var1DotPrev + td[18]*var1DotDotPrev + td[19]*dDotPrev;
@@ -414,16 +372,20 @@ void  SolutionData::reset()
 
 void  SolutionData::perform_Aitken_accelerator_force()
 {
-  double  num, denom;
+  double  num, denom, value;
+  size1 = var1.rows();
 
   for(int ii=0; ii<size1; ii++)
   {
-    num = force[ii] - forcePrev[ii];
+    num = force[ii] - forcePrevIteration[ii];
     num = num*num;
 
-    denom = force[ii] - 2.0*forcePrev[ii] + forcePrev2[ii];
+    denom = force[ii] - 2.0*forcePrevIteration[ii] + forcePrevIteration2[ii];
 
-    force[ii] -= num/denom;
+    value = num/denom;
+
+    if(doubleGreater(value, 0.0))
+    force[ii] -= value;
   }
 
   return;
@@ -432,16 +394,22 @@ void  SolutionData::perform_Aitken_accelerator_force()
 
 void  SolutionData::perform_Aitken_accelerator_displacement()
 {
-  double  num, denom;
+  double  num, denom, value;
 
+  size1 = var1.rows();
   for(int ii=0; ii<size1; ii++)
   {
-    num = var1[ii] - var1Prev[ii];
+    num = var1[ii] - var1PrevIteration[ii];
     num = num*num;
 
-    denom = var1[ii] - 2.0*var1Prev[ii] + var1Prev2[ii];
+    denom = var1[ii] - 2.0*var1PrevIteration[ii] + var1PrevIteration2[ii];
 
-    force[ii] -= num/denom;
+    //cout << var1[ii] << '\t' << var1PrevIteration[ii] << '\t' << var1PrevIteration2[ii] << '\t' << (var1[ii] - num/denom) << endl;
+    
+    value = num/denom;
+
+    if(doubleGreater(value, 0.0))
+      var1[ii] -= value;
   }
 
   return;

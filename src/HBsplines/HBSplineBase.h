@@ -62,8 +62,8 @@ class HBSplineBase: public Domain
         vector<myPoint>  gridVertices;
 
         bool  STATUS_BCS, localStiffnessError, PERIODIC_BCS, CREATE_POSTPROCESS_GRID;
-        bool  GRID_CHANGED, IB_MOVED, STAGGERED, STABILISED;
-        bool  FACTORISED;
+        bool  GRID_CHANGED, IB_MOVED, STAGGERED, STABILISED, SOLIDSOLVER_PATTERN_DONE;
+        bool  FACTORISED, FLUID_PROBLEM_CONVERGED, SOLID_PROBLEM_CONVERGED;
 
         vector<int>  VacantBFs, nodes2divide, elemsToRefine, elemsToUnRefine, activeElements;
 
@@ -384,6 +384,9 @@ class HBSplineBase: public Domain
         virtual void reset()
         { cout << " reset() ... is not defined for the class... " << endl; return; }
 
+        virtual void storeVariables()
+        { cout << " storeVariables() ... is not defined for the class... " << endl; return; }
+
         virtual void printComputerTime(bool reset = true, int detailFlg = 1);
 
         virtual  int  prepareMatrixPattern()
@@ -431,9 +434,13 @@ class HBSplineBase: public Domain
 
         virtual  int  solveFluidProblem();
 
+        virtual  int  solve_fsi(int max_iter, double tol_local);
+
         virtual  int  fsi_staggered_force_predictor(int max_iter, double tol_local);
 
         virtual  int  fsi_staggered_displacement_predictor(int max_iter, double tol_local);
+
+        virtual  int  fsi_monolithic(int max_iter, double tol_local);
 
         virtual  int  fsi_monolithic_fixedpoint_forcePred(int max_iter, double tol_local);
 
