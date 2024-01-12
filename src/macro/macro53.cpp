@@ -65,7 +65,7 @@ int macro53(Macro &macro)
 
   Mesh &dom = *((Mesh*)(&(domain(type,id))));
 
-  Vector<int> &elGrp = dom.elemGrpToBeMeshed;
+  VectorWulf<int> &elGrp = dom.elemGrpToBeMeshed;
 
   elGrp.free();
 

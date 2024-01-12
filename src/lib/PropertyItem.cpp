@@ -51,7 +51,7 @@ void PropertyItem::readInputData(std::ifstream &Ifile, MyString &line, char *err
 
   char fct[] = "PropertyItem::readInputData";
 
-  Vector<double> dataTmp;
+  VectorWulf<double> dataTmp;
 
   MyString *word;
   

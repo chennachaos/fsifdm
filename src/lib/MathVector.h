@@ -14,7 +14,7 @@
 //  vector classes
 //
 //  VectorBase     - abstract base class
-//  Vector         - vector based on a linked list
+//  VectorWulf         - vector based on a linked list
 //  VectorArray    - vector based on an array
 //  VectorFixed    - vector based on an array of fixed length
 //  VectorInfinite - vector based on an infinite linked list
@@ -22,7 +22,7 @@
 
 //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-// vector coefficient class needed for Vector
+// vector coefficient class needed for VectorWulf
 
 template<typename Type> class VectorCoeff: public ListItem
 {
@@ -85,18 +85,18 @@ template<typename Type> class VectorBase: public virtual ContainerBase, public L
 //
 // vector based on a linked list
 
-template<typename Type> class Vector: public VectorBase<Type>, 
+template<typename Type> class VectorWulf: public VectorBase<Type>, 
                                       public LinkedListBase< VectorCoeff<Type> >
 {
   public:
 
-    Vector(void);
+    VectorWulf(void);
        
-    virtual ~Vector();
+    virtual ~VectorWulf();
        
     Type &operator[](int);
        
-    template<class Type2> Vector<Type> &operator=(Type2 &);
+    template<class Type2> VectorWulf<Type> &operator=(Type2 &);
 
     Type* append(Type val = (Type) 0);
 
@@ -163,7 +163,7 @@ template<typename Type, int dimension> class VectorFixed: public VectorBase<Type
 //
 // vector based on an infinite linked list
 
-template<typename Type> class VectorInfinite: public Vector<Type>
+template<typename Type> class VectorInfinite: public VectorWulf<Type>
 {
   public:
 
@@ -225,7 +225,7 @@ template<typename Type> void VectorBase<Type>::zero(void)
 
 template<typename Type> Type VectorBase<Type>::norm(void)
 {
-  std::cout << " Warning! norm only works for Vector<double> or Vector<int>!\n\n";
+  std::cout << " Warning! norm only works for VectorWulf<double> or VectorWulf<int>!\n\n";
       
   return (Type) 0;
 }
@@ -377,14 +377,14 @@ template<typename Type> std::ostream &operator<<(std::ostream &os, VectorBase<Ty
 //:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 
-template<typename Type> Vector<Type>::Vector(void)
+template<typename Type> VectorWulf<Type>::VectorWulf(void)
 {
   return;
 }
 
 
 
-template<typename Type> Vector<Type>::~Vector()
+template<typename Type> VectorWulf<Type>::~VectorWulf()
 {
   this->free();   
 
@@ -393,14 +393,14 @@ template<typename Type> Vector<Type>::~Vector()
 
 
 
-template<typename Type> Type &Vector<Type>::operator[](int i)
+template<typename Type> Type &VectorWulf<Type>::operator[](int i)
 {
   return LinkedListBase< VectorCoeff<Type> >::getItem(i).val;
 }
 
 
 
-template<typename Type> template<class Type2> Vector<Type> &Vector<Type>::operator=(Type2 &b)
+template<typename Type> template<class Type2> VectorWulf<Type> &VectorWulf<Type>::operator=(Type2 &b)
 {
   this->free();
 
@@ -411,7 +411,7 @@ template<typename Type> template<class Type2> Vector<Type> &Vector<Type>::operat
 
 
 
-template<typename Type> Type *Vector<Type>::append(Type x)
+template<typename Type> Type *VectorWulf<Type>::append(Type x)
 {       
   VectorCoeff<Type> *c = new VectorCoeff<Type>;
 
@@ -425,7 +425,7 @@ template<typename Type> Type *Vector<Type>::append(Type x)
 
 
 
-template<typename Type> void Vector<Type>::insert(Type x, int pos)
+template<typename Type> void VectorWulf<Type>::insert(Type x, int pos)
 {       
   VectorCoeff<Type> *c = new VectorCoeff<Type>;
 
@@ -439,7 +439,7 @@ template<typename Type> void Vector<Type>::insert(Type x, int pos)
 
 
 
-template<typename Type> void Vector<Type>::del(int pos)
+template<typename Type> void VectorWulf<Type>::del(int pos)
 {       
   LinkedListBase< VectorCoeff<Type> >::del(pos);
 	
@@ -449,7 +449,7 @@ template<typename Type> void Vector<Type>::del(int pos)
 
 
 
-template<typename Type> Type &Vector<Type>::firstCoeff(void)
+template<typename Type> Type &VectorWulf<Type>::firstCoeff(void)
 {
   return ((VectorCoeff<Type>*)(this->first.next))->val;
 }
@@ -457,7 +457,7 @@ template<typename Type> Type &Vector<Type>::firstCoeff(void)
 
 
 
-template<typename Type> Type &Vector<Type>::lastCoeff(void)
+template<typename Type> Type &VectorWulf<Type>::lastCoeff(void)
 {
   return ((VectorCoeff<Type>*)(this->last.prev))->val;
 }

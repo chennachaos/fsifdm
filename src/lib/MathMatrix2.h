@@ -11,7 +11,7 @@
 template<typename Type> void MatrixSparse<Type>::quickSort(bool rowCompFlg, bool overwriteFlg, 
                                                            VectorArray<int> &perm)
 {
-  Vector<int> tmp1, tmp2;
+  VectorWulf<int> tmp1, tmp2;
 
   VectorArray<int> tmp3;
 
@@ -85,7 +85,7 @@ template<typename Type> void MatrixSparse<Type>::copySort(bool rowCompFlg, bool 
     exit(1);
   }
 
-  ListArray< Vector<int> > tmpRow, tmpCol, tmpRowP, tmpColP;
+  ListArray< VectorWulf<int> > tmpRow, tmpCol, tmpRowP, tmpColP;
 
   int c, i, j, k, m = row.n, z = 0, *P;
 
@@ -273,7 +273,7 @@ template<typename Type> int MatrixSparse<Type>::makeSymmetric(bool rowCompFlg,
 
   int c, i, j, k, m = row.n;
 
-  ListArray< Vector<int> > tmpCol, tmpRow, tmpRowP;
+  ListArray< VectorWulf<int> > tmpCol, tmpRow, tmpRowP;
 
   tmpCol.setDim(this->nCol);
   tmpRow.setDim(this->nRow);

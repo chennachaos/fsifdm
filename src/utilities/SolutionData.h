@@ -3,8 +3,8 @@
 #define incl_SolutionData_h
 
 #include "headersBasic.h"
-#include "headersEigen.h"
 #include "PropertyItem.h"
+#include "headersEigen.h"
 
 
 class  SolutionData

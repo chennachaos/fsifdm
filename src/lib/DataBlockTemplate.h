@@ -20,19 +20,19 @@ class DataBlockTemplate
     bool expandToMatch(DataBlockTemplate &);
 
     bool readBlock(std::ifstream &, MyString &, 
-                   Vector<int> &, Vector<double> &, MyStringList &, Vector<int> &);
+                   VectorWulf<int> &, VectorWulf<double> &, MyStringList &, VectorWulf<int> &);
 
     void free(void);
     
   private:
     
     bool readLine (std::ifstream &, MyString &, 
-                   Vector<int> &, Vector<double> &, MyStringList &, Vector<int> &);
+                   VectorWulf<int> &, VectorWulf<double> &, MyStringList &, VectorWulf<int> &);
     
-    Vector<int>   type, expr, t, c;
+    VectorWulf<int>   type, expr, t, c;
 
-    Vector<int>    iDef, lDef;
-    Vector<double> dDef;
+    VectorWulf<int>    iDef, lDef;
+    VectorWulf<double> dDef;
     MyStringList   sDef;
 
     char*** list;

@@ -21,7 +21,7 @@ struct RunControl
   
   int act;                      // active command currently being executed
 
-  Vector<int> cmd;              // array of integer command keys
+  VectorWulf<int> cmd;              // array of integer command keys
 
   List<MyStringList> batch;     // List of of Batch macro lists
 

@@ -7,7 +7,7 @@
 extern DomainTree domain;
 
 
-//static Vector<double> circ, diff;
+//static VectorWulf<double> circ, diff;
 
 
 

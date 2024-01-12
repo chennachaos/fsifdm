@@ -7,7 +7,7 @@
 #include "MathVector.h"
 
 
-template<typename Type> ListArray< VectorArray<Type> >& operator=(List< Vector<Type> > &b)
+template<typename Type> ListArray< VectorArray<Type> >& operator=(List< VectorWulf<Type> > &b)
 {
   
 

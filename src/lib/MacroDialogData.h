@@ -28,8 +28,8 @@ class MacroDialogData
     
     List<MyStringList> list, rBox;
     
-    Vector<double> dflt;
-    Vector<int>    inputType, nBttn, txtFCol, bttnCol;
+    VectorWulf<double> dflt;
+    VectorWulf<int>    inputType, nBttn, txtFCol, bttnCol;
    
     int strgTxtFCol;
     

@@ -638,7 +638,7 @@ bool MyString::toDbl(double *x, bool errMsg)
 
 
 
-bool MyString::toInt(Vector<int> &a, bool errMsg) 
+bool MyString::toInt(VectorWulf<int> &a, bool errMsg) 
 {
   a.free();
 

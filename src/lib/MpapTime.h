@@ -16,7 +16,7 @@ class MpapTime
 
     bool dtOK;
 
-    Vector<double> stack;
+    VectorWulf<double> stack;
 
     void cut(void);
     
@@ -27,7 +27,7 @@ class MpapTime
 
 // ----- for Deniz's macro163 -------
 
-    Vector<double> Tstep;
+    VectorWulf<double> Tstep;
 
     int nTstep;
 

@@ -116,8 +116,8 @@ void  HBSplineFEM::readInputData(std::ifstream &Ifile, MyString &line)
   double fact;
 
   MyStringList   sTmp;
-  List<Vector<int> > lviTmp;
-  List<Vector<double> > lvdTmp;
+  List<VectorWulf<int> > lviTmp;
+  List<VectorWulf<double> > lvdTmp;
 
   DataBlockTemplate t1, t2;
 
